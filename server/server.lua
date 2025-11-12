@@ -7,18 +7,14 @@ ActiveVPN = ActiveVPN or {}
 --- Send phone notification (fallback to QBCore:Notify)
 local function SendPhoneNotification(src, title, msg, app, timeout)
     if not src then return end
-
-    if GetResourceState('summit_phone') == 'started' then
-          exports['summit_phone']:SendCustomAppMessage('sendPhoneNotification', {
-            id = ('group_%s'):format(math.random(1000, 9999)),
-            title = title or 'Group System',
-            description = msg or 'No message provided',
-            app = app or 'groups',
-            timeout = timeout or 5000,
-        })
-    else
-        TriggerClientEvent('QBCore:Notify', src, msg or 'Notification', 'primary', timeout or 5000)
-    end
+    local jsonData = json.encode({
+        id = ('group_%s'):format(math.random(1000, 9999)),
+        title = title or 'Group System',
+        description = msg or 'No message provided',
+        app = app or 'groups',
+        timeout = timeout or 5000,
+    })
+    TriggerClientEvent('phone:addnotiFication', src, jsonData)
 end
 
 -- Simple debug helper (respects sv_debug convar)
@@ -337,10 +333,11 @@ RegisterNetEvent('ignis_groups:server:readyForJob', function()
 
     table.insert(_G.JobQueues[jobType], id)
     DebugPrint(('Queued group %s for %s'):format(id, jobType))
-
-    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroupJobSteps', {
-        { id = 1, name = 'Waiting for job offer...', isDone = false }
-    })
+    --[[ 
+        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroupJobSteps', {
+            { id = 1, name = 'Waiting for job offer...', isDone = false }
+        })
+    ]]
 end)
 
 -- ####################################################################
@@ -414,7 +411,6 @@ local function setJobStatus(id, stages)
         for _, src in ipairs(members) do
             TriggerClientEvent('ignis_groups:client:setGroupJobSteps', src, g.stages)
             TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroupJobSteps', g.stages)
-            SendPhoneNotification(src, 'Job Started', ('Your group began a %s mission!'):format(g.jobType or 'task'), 'groups', 6000)
         end
     end
 
@@ -656,7 +652,9 @@ exports('CreateBlipForGroup', function(group, name, data)
     for _, member in ipairs(Groups[group].members or {}) do
         local Player = QBCore.Functions.GetPlayerByCitizenId(member.cid)
         if Player then
-            TriggerClientEvent('ignis_groups:client:createBlip', Player.PlayerData.source, group, name, data)
+            if member.cid == Player.PlayerData.citizenid then
+                TriggerClientEvent('ignis_groups:client:createBlip', Player.PlayerData.source, group, name, data)
+            end
         end
     end
 end)
