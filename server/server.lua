@@ -9,7 +9,7 @@ local function SendPhoneNotification(src, title, msg, app, timeout)
     if not src then return end
 
     if GetResourceState('summit_phone') == 'started' then
-        exports['summit_phone']:sendNotification({
+          exports['summit_phone']:SendCustomAppMessage('sendPhoneNotification', {
             id = ('group_%s'):format(math.random(1000, 9999)),
             title = title or 'Group System',
             description = msg or 'No message provided',
@@ -383,14 +383,14 @@ exports('GetGroupLeader', GetGroupLeader)
 
 local function getGroupMembers(id)
     if not id then return nil end
-    local g = Groups[id]
-    if not g or not g.members then return nil end
+    local group = Groups[id]
+    if not group or not group.members then return nil end
 
-    local temp = {}
-    for _, m in ipairs(g.members) do
-        temp[#temp + 1] = m.player -- server IDs
+    local list = {}
+    for _, m in ipairs(group.members) do
+        list[#list + 1] = m.player
     end
-    return temp
+    return list
 end
 exports('getGroupMembers', getGroupMembers)
 
@@ -647,5 +647,27 @@ RegisterNetEvent('ignis_groups:server:printMyGroup', function()
             src, id, #(group.members or {})))
     else
         DebugPrint(('[IGNIS_GROUPS] Player %s not in any group'):format(src))
+    end
+end)
+
+-- === CREATE GROUP BLIP ===
+exports('CreateBlipForGroup', function(group, name, data)
+    if not group or not data then return end
+    for _, member in ipairs(Groups[group].members or {}) do
+        local Player = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+        if Player then
+            TriggerClientEvent('ignis_groups:client:createBlip', Player.PlayerData.source, group, name, data)
+        end
+    end
+end)
+
+-- === REMOVE GROUP BLIP ===
+exports('RemoveBlipForGroup', function(group, name)
+    if not group then return end
+    for _, member in ipairs(Groups[group].members or {}) do
+        local Player = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+        if Player then
+            TriggerClientEvent('ignis_groups:client:removeBlip', Player.PlayerData.source, group, name)
+        end
     end
 end)
