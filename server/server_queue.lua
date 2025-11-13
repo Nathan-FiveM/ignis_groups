@@ -83,7 +83,15 @@ RegisterNetEvent('ignis_groups:acceptJob', function(notificationId, data)
 end)
 
 RegisterNetEvent('ignis_groups:denyJob', function(notificationId, data)
-	TriggerClientEvent('phone:client:removeActionNotification', source, notificationId)
-    TriggerClientEvent('ignis_groups:server:readyForJob', data.jobType)
-    print(('[IGNIS_GROUPS] Group %s denied %s job'):format(data.groupId, 'houserobbery'))
+    TriggerClientEvent('phone:client:removeActionNotification', source, notificationId)
+    local gid = data.groupId
+    local jobType = data.jobType
+    if not gid or not jobType then return end
+
+    -- ensure JobQueues exists for this job type
+    _G.JobQueues[jobType] = _G.JobQueues[jobType] or {}
+
+    -- ✅ Re-insert the group at the end of the queue
+    table.insert(_G.JobQueues[jobType], gid)
+    print(('[IGNIS_GROUPS] Group %s declined %s — moved to back of queue'):format(gid, jobType))
 end)

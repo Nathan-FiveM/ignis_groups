@@ -4,6 +4,31 @@ local QBCore = exports['qb-core']:GetCoreObject()
 Groups    = Groups or {}
 ActiveVPN = ActiveVPN or {}
 
+local function FormatGroup(gid, g)
+    if not g then return {} end
+    local members = {}
+
+    for _, m in ipairs(g.members or {}) do
+        members[#members + 1] = {
+            cid      = m.cid,
+            name     = m.name,
+            vpn      = m.vpn or false,
+            player   = m.player or 0,
+            isLeader = (m.player == g.leader)
+        }
+    end
+
+    return {
+        id      = gid,
+        name    = g.jobType or ("Group " .. gid),
+        jobType = g.jobType or "generic",
+        status  = g.status or "idle",
+        leader  = g.leader,
+        members = members,
+        stages  = g.stages or {}
+    }
+end
+
 --- Send phone notification (fallback to QBCore:Notify)
 local function SendPhoneNotification(src, title, msg, app, timeout)
     if not src then return end
@@ -317,28 +342,105 @@ end)
 RegisterNetEvent('ignis_groups:server:readyForJob', function()
     local src = source
     local group, id = GetGroupByMembers(src)
-    if not group or not id then return end
+    if not group or not id then
+        print(('[IGNIS_GROUPS] ReadyForJob called but no valid group found for src=%s'):format(src))
+        return
+    end
 
     _G.JobQueues = _G.JobQueues or {}
-
     local jobType = group.jobType or 'generic'
     _G.JobQueues[jobType] = _G.JobQueues[jobType] or {}
 
     for _, gid in ipairs(_G.JobQueues[jobType]) do
         if gid == id then
-            DebugPrint(('Group %s already queued for %s'):format(id, jobType))
+            print(('[IGNIS_GROUPS] Group %s already queued for %s'):format(id, jobType))
             return
         end
     end
 
+    group.status = "queued"
+    Groups[id].status = "queued"
     table.insert(_G.JobQueues[jobType], id)
-    DebugPrint(('Queued group %s for %s'):format(id, jobType))
-    --[[ 
-        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroupJobSteps', {
-            { id = 1, name = 'Waiting for job offer...', isDone = false }
-        })
-    ]]
+    print(('[IGNIS_GROUPS] Queued group %s for %s'):format(id, jobType))
+
+    -- ✅ Send properly formatted data to phones
+    local formatted = FormatGroup(id, group)
+
+    for _, member in ipairs(group.members or {}) do
+        local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+        if ply then
+            local s = ply.PlayerData.source
+
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', formatted)
+
+            local groupsArray = {}
+            for gid, g in pairs(Groups) do
+                groupsArray[#groupsArray + 1] = FormatGroup(gid, g)
+            end
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', groupsArray)
+
+            SendPhoneNotification(
+                s,
+                '📋 Group Update',
+                ('Your group has joined the %s queue!'):format(jobType),
+                'groups',
+                6000
+            )
+        end
+    end
 end)
+
+RegisterNetEvent('ignis_groups:server:leaveQueue', function()
+    local src = source
+    local group, id = GetGroupByMembers(src)
+    if not group or not id then return end
+
+    local jobType = group.jobType or "generic"
+    _G.JobQueues[jobType] = _G.JobQueues[jobType] or {}
+
+    -- Remove from queue
+    for index, gid in ipairs(_G.JobQueues[jobType]) do
+        if gid == id then
+            table.remove(_G.JobQueues[jobType], index)
+            break
+        end
+    end
+
+    -- Update internal state
+    group.status = "idle"
+    Groups[id].status = "idle"
+
+    print(("[IGNIS_GROUPS] Group %s left queue for %s"):format(id, jobType))
+
+    -- Build formatted object
+    local formatted = FormatGroup(id, group)
+
+    -- Update ALL group members' phones
+    for _, member in ipairs(group.members or {}) do
+        local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+        if ply then
+            local s = ply.PlayerData.source
+
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', formatted)
+
+            -- Rebuild entire groups list
+            local groupsArray = {}
+            for gid, g in pairs(Groups) do
+                groupsArray[#groupsArray + 1] = FormatGroup(gid, g)
+            end
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', groupsArray)
+
+            SendPhoneNotification(
+                s,
+                '📋 Group Update',
+                'Your group has left the job queue.',
+                'groups',
+                6000
+            )
+        end
+    end
+end)
+
 
 -- ####################################################################
 -- # EXPORTS (rep-tablet compatibility)
@@ -523,7 +625,7 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
             id          = gid,
             name        = g.jobType or ('Group ' .. gid),
             memberCount = #(g.members or {}),
-            status      = g.status and 'busy' or 'idle',
+            status      = g.status == "queued" and "queued" or (g.status == true and "busy" or "idle"),
             leader      = g.leader,
             members     = g.members or {},
             jobType     = g.jobType or 'Generic',
@@ -536,15 +638,13 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
     if group then
         for _, m in ipairs(group.members or {}) do
             local ply = QBCore.Functions.GetPlayerByCitizenId(m.cid)
-            local name = m.name
             local playerId = m.player
-
-            if ply then
+            local name = m.name
+            if ply and not m.vpn then
                 local info = ply.PlayerData.charinfo or {}
-                name      = ("%s %s"):format(info.firstname or "John", info.lastname or "Doe")
-                playerId  = ply.PlayerData.source
+                name = ("%s %s"):format(info.firstname or "John", info.lastname or "Doe")
             end
-
+            playerId  = ply.PlayerData.source
             groupMembers[#groupMembers + 1] = {
                 name     = name,
                 playerId = playerId,
@@ -555,6 +655,19 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
         stages = group.stages or {}
     end
 
+    -- 🟢 AUTO-SYNC QUEUED / ACTIVE GROUPS TO PHONES
+    if group and (group.status == "queued" or group.status == "active") then
+        DebugPrint(('[IGNIS_GROUPS] Auto-syncing group %s (%s) to members'):format(id, group.status))
+        for _, member in ipairs(group.members or {}) do
+            local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+            if ply then
+                local s = ply.PlayerData.source
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', group)
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', Groups)
+            end
+        end
+    end
+
     return {
         groups      = groupsArray,
         groupData   = groupMembers,
@@ -562,6 +675,7 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
         groupStages = stages,
     }
 end)
+
 
 lib.callback.register('ignis_groups:getGroupData', function(source)
     local group = GetGroupByMembers(source)
@@ -587,13 +701,32 @@ RegisterNetEvent('ignis_groups:server:getSetupAppData', function()
     local src = source
     local group, id = GetGroupByMembers(src)
 
-    if group then
-        -- Send current group info back to phone
-        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', true)
-        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', group)
-    else
-        -- Fallback: job center
+    if not group then
+        -- ❌ Not in a group, fallback to job center
         TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', false)
+        return
+    end
+
+    -- ✅ Player is in a group
+    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', true)
+    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', group)
+    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroups', Groups)
+
+    -- 🟢 If queued or active, push full sync + notification
+    if group.status == "queued" or group.status == "active" then
+        print(('[IGNIS_GROUPS] Auto-syncing queued/active group %s (%s) to src=%s'):format(id, group.status, src))
+
+        SendPhoneNotification(src, '📋 Group Update', ('Your group is currently %s for a job.'):format(group.status), 'groups', 4000)
+
+        -- ✅ Push sync for all members
+        for _, member in ipairs(group.members or {}) do
+            local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+            if ply then
+                local s = ply.PlayerData.source
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', group)
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', Groups)
+            end
+        end
     end
 end)
 
@@ -667,5 +800,18 @@ exports('RemoveBlipForGroup', function(group, name)
         if Player then
             TriggerClientEvent('ignis_groups:client:removeBlip', Player.PlayerData.source, group, name)
         end
+    end
+end)
+
+RegisterNetEvent('ignis_groups:server:updateVPN', function(hasVpn)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+    local cid = Player.PlayerData.citizenid
+
+    if hasVpn then
+        ActiveVPN[cid] = GenerateAlias(cid)
+    else
+        ActiveVPN[cid] = nil
     end
 end)
