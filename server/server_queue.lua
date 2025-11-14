@@ -48,7 +48,7 @@ CreateThread(function()
                 local cid = member.cid or member
                 local ply = QBCore.Functions.GetPlayerByCitizenId(cid)
                 if ply then
-                    local src = ply.PlayerData.source
+                    local src = member.playerId
                     print(('[IGNIS_GROUPS] Sending notification to %s (%s)'):format(src, cid))
                     TriggerClientEvent('phone:addActionNotification', src, json.encode(actionData))
                 else
@@ -74,8 +74,8 @@ RegisterNetEvent('ignis_groups:acceptJob', function(notificationId, data)
     for _, member in ipairs(group.members or {}) do
         local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
         if ply then
-            print(('[IGNIS_GROUPS] Triggering Rep-Tablet readyforjob for %s (%s)'):format(ply.PlayerData.source, member.cid))
-            TriggerClientEvent('rep-tablet:client:readyforjob', ply.PlayerData.source)
+            print(('[IGNIS_GROUPS] Triggering Rep-Tablet readyforjob for %s (%s)'):format(member.playerId, member.cid))
+            TriggerClientEvent('rep-tablet:client:readyforjob', member.playerId)
         else
             print(('[IGNIS_GROUPS] Could not find player with CID %s (may be offline)'):format(tostring(member.cid)))
         end

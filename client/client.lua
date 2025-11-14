@@ -32,8 +32,12 @@ AddEventHandler('rep-tablet:client:checkout', function()
 end)
 
 -- === PHONE SYNC EVENTS ===
+RegisterNetEvent("ignis_groups:client:updateGroups", function(groups)
+    TriggerEvent('summit_phone:client:updateGroupsApp', 'setGroups', groups)
+end)
+
 RegisterNetEvent('ignis_groups:client:syncGroups', function(groups)
-    TriggerEvent('summit_phone:client:updateGroupsApp', groups)
+    TriggerEvent('summit_phone:client:updateGroupsApp', 'setGroups', groups)
 end)
 
 RegisterNetEvent('ignis_groups:client:updateStatus', function(group, name, stages)
@@ -41,6 +45,7 @@ RegisterNetEvent('ignis_groups:client:updateStatus', function(group, name, stage
 end)
 
 RegisterNetEvent('ignis_groups:client:setGroupJobSteps', function(stages)
+    inJob = true
     TriggerEvent('summit_phone:client:updateGroupsApp', 'setGroupJobSteps', stages)
 end)
 
@@ -85,6 +90,18 @@ RegisterNetEvent('ignis_groups:client:removeBlip', function(group, name)
         ActiveBlips[name] = nil
         print(('[IGNIS_GROUPS] Removed blip "%s" for group %s'):format(name or 'unknown', group or '?'))
     end
+end)
+
+exports('GetMyGroup', function(cb)
+    QBCore.Functions.TriggerCallback('ignis_groups:getMyGroup', function(data)
+        cb(data)
+    end)
+end)
+
+exports('GetMyGroupLeader', function(cb)
+    QBCore.Functions.TriggerCallback('ignis_groups:getGroupLeader', function(leader)
+        cb(leader)
+    end)
 end)
 
 RegisterCommand('mygroup', function()

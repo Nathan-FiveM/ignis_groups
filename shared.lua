@@ -1,6 +1,7 @@
 -- Shared globals for ignis_groups
 Groups = {}
 GroupConfigs = {}
+PlayerJobCooldowns = {}
 
 function DebugPrint(msg)
     if GetConvarInt('sv_debug', 0) == 1 then

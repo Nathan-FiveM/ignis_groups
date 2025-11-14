@@ -44,9 +44,9 @@ end
 
 -- Simple debug helper (respects sv_debug convar)
 local function DebugPrint(msg)
-    if GetConvarInt('sv_debug', 0) == 1 then
+    --if GetConvarInt('sv_debug', 0) == 1 then
         print(('[IGNIS_GROUPS] %s'):format(msg))
-    end
+    --end
 end
 
 -- Get "Firstname Lastname" for a player
@@ -157,6 +157,17 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
     local id      = ('%s_%d'):format(cid, math.random(1000, 9999))
     local name    = hasVpn and GenerateAlias(cid) or GetPlayerCharName(src)
 
+    print('Hit the server state and should set nghe in phone to: ', jobType)
+
+    -- === GROUP SIZE LIMIT CHECK ===
+    local maxGroupSize = Config.GroupPlayerLimits[jobType] or Config.DefaultGroupLimit
+    if maxGroupSize < 1 then maxGroupSize = Config.DefaultGroupLimit end
+
+    -- forward to NUI
+    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setPlayerJobState", jobType)
+
+    -- group starts with 1 member (the creator) ALWAYS allowed
+
     Groups[id] = {
         id       = id,
         leader   = src,                       -- leader = server id (rep-tablet compat)
@@ -172,9 +183,31 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
 
     DebugPrint(('Group %s created by src=%s (cid=%s, job=%s)'):format(id, src, cid, jobType or 'Generic'))
 
-    TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
-    TriggerClientEvent('ignis_groups:client:syncGroups',   -1, Groups)
+    TriggerClientEvent("summit_phone:client:updateGroupsApp", src, {
+        action = "setInGroup",
+        data = true,
+    })
 
+    TriggerClientEvent("summit_phone:client:updateGroupsApp", src, {
+        action = "setCurrentGroup",
+        data = {
+            jobType = jobType,
+            members = Groups[id].members,
+            leader  = src,
+            id      = id,
+        }
+    })
+
+    TriggerClientEvent("summit_phone:client:updateGroupsApp", src, {
+        action = "setGroups",
+        data = Groups
+    })
+
+    TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
+    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
+        groupID = groupId,
+        leader  = src
+    })
     RefreshGroupUI(id)
 end)
 
@@ -214,6 +247,13 @@ RegisterNetEvent('ignis_groups:server:joinGroup', function(groupId, pass)
         end
     end
 
+    local maxGroupSize = Config.GroupPlayerLimits[group.jobType] or Config.DefaultGroupLimit
+    local currentMembers = #group.members
+
+    if currentMembers >= maxGroupSize then
+        return TriggerClientEvent('QBCore:Notify', src, "This group is full!", "error")
+    end
+
     local hasVpn = HasVPN(Player)
     local name   = hasVpn and GenerateAlias(cid) or GetPlayerCharName(src)
 
@@ -227,7 +267,10 @@ RegisterNetEvent('ignis_groups:server:joinGroup', function(groupId, pass)
     DebugPrint(('Player %s joined group %s'):format(src, groupId))
 
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
-    TriggerClientEvent('ignis_groups:client:syncGroups',   -1, Groups)
+    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
+        groupID = groupId,
+        leader  = group.leader
+    })
     RefreshGroupUI(groupId)
 end)
 
@@ -257,12 +300,15 @@ RegisterNetEvent('ignis_groups:server:leaveGroup', function()
                     end
 
                     TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
-                    TriggerClientEvent('ignis_groups:client:syncGroups',   -1, Groups)
 
                     if Groups[id] then
                         RefreshGroupUI(id)
                     end
 
+                    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
+                        groupID = groupId,
+                        leader  = group.leader
+                    })
                     TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', false)
                     TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', {})
                     TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroups', Groups)
@@ -297,6 +343,10 @@ RegisterNetEvent('ignis_groups:server:deleteGroup', function()
     Groups[id] = nil
     DebugPrint(('Group %s deleted by %s'):format(id, src))
 
+    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
+        groupID = groupId,
+        leader  = group.leader
+    })
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
 end)
 
@@ -339,6 +389,16 @@ end)
 -- # QUEUE / READY FOR JOB
 -- ####################################################################
 
+function CountPlayersInJob(jobType)
+    local count = 0
+    for _, group in pairs(Groups) do
+        if group.jobType == jobType and group.status == "queued" then
+            count += (#group.members or 0)
+        end
+    end
+    return count
+end
+
 RegisterNetEvent('ignis_groups:server:readyForJob', function()
     local src = source
     local group, id = GetGroupByMembers(src)
@@ -357,6 +417,28 @@ RegisterNetEvent('ignis_groups:server:readyForJob', function()
             return
         end
     end
+
+    -- Queue Check
+    local maxPlayers = Config.JobPlayerLimits[jobType] or 0
+    local activePlayers = CountPlayersInJob(jobType)
+    local newTotal = activePlayers + #group.members
+
+    if newTotal > maxPlayers then
+        TriggerClientEvent('QBCore:Notify', src, "This job’s queue is full!", "error")
+        return
+    end
+    -- Cooldown Check
+    for _, member in ipairs(group.members) do
+        local cid = member.cid
+        local cd = PlayerJobCooldowns[cid]
+
+        if cd and cd.jobType == jobType and cd.expires > os.time() then
+            local remaining = cd.expires - os.time()
+            TriggerClientEvent('QBCore:Notify', src, ("Cooldown: %ds remaining"):format(remaining), "error")
+            return
+        end
+    end
+
 
     group.status = "queued"
     Groups[id].status = "queued"
@@ -528,6 +610,14 @@ local function resetJobStatus(id)
     g.status = false
     g.stages = {}
 
+    for _, member in ipairs(g.members) do
+        local cid = member.cid
+        PlayerJobCooldowns[cid] = {
+            jobType = group.jobType,
+            expires = os.time() + (Config.JobCooldowns[group.jobType] or 0)
+        }
+    end
+
     local members = getGroupMembers(id)
     if members then
         for _, src in ipairs(members) do
@@ -553,7 +643,6 @@ local function pNotifyGroup(id, title, msg, icon, color, time)
 end
 exports('pNotifyGroup', pNotifyGroup)
 exports('NotifyGroup', pNotifyGroup)
-
 
 local function GroupEvent(id, event, args)
     if not id or not event then return end
@@ -600,6 +689,10 @@ local function DestroyGroup(id)
 
     Groups[id] = nil
     print(('[IGNIS_GROUPS] DestroyGroup: %s removed'):format(id))
+    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
+        groupID = groupId,
+        leader  = group.leader
+    })
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
 end
 exports('DestroyGroup', DestroyGroup)
@@ -730,7 +823,6 @@ RegisterNetEvent('ignis_groups:server:getSetupAppData', function()
     end
 end)
 
-
 -- ####################################################################
 -- # DEBUG / ADMIN COMMANDS
 -- ####################################################################
@@ -813,5 +905,242 @@ RegisterNetEvent('ignis_groups:server:updateVPN', function(hasVpn)
         ActiveVPN[cid] = GenerateAlias(cid)
     else
         ActiveVPN[cid] = nil
+    end
+end)
+
+-- CLIENT CALLBACK: Get group the player belongs to
+QBCore.Functions.CreateCallback('ignis_groups:getMyGroup', function(source, cb)
+    local group, id = GetGroupByMembers(source)
+    cb({
+        group = group,
+        id = id
+    })
+end)
+
+-- CLIENT CALLBACK: Get leader of a group
+QBCore.Functions.CreateCallback('ignis_groups:getGroupLeader', function(source, cb)
+    local group, id = GetGroupByMembers(source)
+    if not group then
+        cb(nil)
+        return
+    end
+
+    cb(group.leader)
+end)
+
+local JobCenter = {
+    -- Non-VPN Jobs
+    ['towing'] = {
+        vpn = false,
+        label = "Towing",
+        description = "Help tow broken down vehicles for the city.",
+        coords = vector3(-238.94, -1183.74, 0.0),
+        JobInformation = "Locate broken down or illegally parked vehicles marked on your GPS, use your tow truck to attach and transport them back to the city impound. Make sure to follow traffic laws and return to base for your payment.",
+    },
+    ['taxi'] = {
+        vpn = false,
+        label = "Taxi",
+        description = "Drive passengers to their destinations.",
+        coords = vector3(909.51, -177.36, 0.0),
+        JobInformation = "Pick up passengers waiting at taxi stands or who call for rides. Drive them safely to their destination following the GPS route. You’ll earn cash for each successful drop-off.",
+    },
+    ['storedelivery'] = {
+        vpn = false,
+        label = "Store Deliveries",
+        description = "Deliver goods to local stores.",
+        coords = vector3(153.2579, -3210.59, 0.0),
+        JobInformation = "Pick up delivery boxes from the depot. Follow your GPS to each store and drop off the items at their loading zones. Ensure timely delivery for a bonus.",
+    },
+    ['sani'] = {
+        vpn = false,
+        label = "Sanitation Worker",
+        description = "Clean up the city as part of the Sanitation Department.",
+        coords = vector3(-351.44, -1566.37, 0.0),
+        JobInformation = "Work with the city sanitation crew. Collect trash bags from assigned streets, throw them into the garbage truck, and empty at the landfill for your pay.",
+    },
+    ['mining'] = {
+        vpn = false,
+        label = "Mining Crew",
+        description = "Mine valuable ores deep in the quarry.",
+        coords = vector3(-598.545, 2096.533, 0.0),
+        JobInformation = "Head to the quarry and collect rocks from the mining area. Use a pickaxe to extract ore, process it, and deliver it to the smelter for cash rewards.",
+    },
+    ['chickens'] = {
+        vpn = false,
+        label = "Chicken Farmer",
+        description = "Process chickens and collect meat for local restaurants.",
+        coords = vector3(2390.438, 5044.779, 0.0),
+        JobInformation = "Collect live chickens, process them at the farm, and package the meat. Deliver finished goods to designated buyers to earn money.",
+    },
+    ['fishing'] = {
+        vpn = false,
+        label = "Fishing",
+        description = "Catch fish to sell at the docks or markets.",
+        coords = vector3(-335.15, 6105.79, 0.0),
+        JobInformation = "Grab a fishing rod, find a good spot near the water, and start fishing. Sell your catch to the fishmonger for profit — rare fish pay extra.",
+    },
+    ['hunting'] = {
+        vpn = false,
+        label = "Hunting",
+        description = "Hunt animals in the wilderness and sell pelts for cash.",
+        coords = vector3(-1616.03, 3727.290, 0.0),
+        JobInformation = "Travel to the hunting grounds and track animals using your rifle. Skin the animals to collect meat and pelts, then sell them at the butcher for income.",
+    },
+    ['lumber'] = {
+        vpn = false,
+        label = "Lumberjack",
+        description = "Chop down trees and sell lumber.",
+        coords = vector3(1168.487, -1347.83, 0.0),
+        JobInformation = "Use your axe to chop down marked trees, process them into logs, and deliver them to the lumber mill for payment.",
+    },
+    ['panning'] = {
+        vpn = false,
+        label = "Gold Panning",
+        description = "Pan for gold in rivers and streams.",
+        coords = vector3(-1509.00, 1508.842, 0.0),
+        JobInformation = "Use your gold pan at shallow water spots to find small nuggets. Collect enough to sell to gold traders for a tidy profit.",
+    },
+    ['postop'] = {
+        vpn = false,
+        label = "PostOp Worker",
+        description = "Deliver mail and packages across the city.",
+        coords = vector3(-432.51, -2787.98, 0.0),
+        JobInformation = "Pick up packages from the PostOp depot. Follow GPS markers to each delivery address, drop the items, and return to the depot to get paid.",
+    },
+
+    -- VPN-Required Jobs
+    ['theftcar'] = {
+        vpn = true,
+        label = "Chop Shop",
+        description = "Steal cars and strip them for valuable parts.",
+        coords = vector3(-214.485, -1366.22, 0.0),
+        JobInformation = "Locate high-value vehicles on the map, steal them without attracting police attention, and bring them to the chop shop for dismantling and payment.",
+    },
+    ['oxyrun'] = {
+        vpn = true,
+        label = "Oxy Run",
+        description = "Deliver 'packages' around the city for extra cash.",
+        coords = 'rep-oxyrun:client:chiduong2',
+        JobInformation = "Meet the supplier to pick up Oxy packages. Deliver them discreetly around the city. Avoid police attention or you’ll lose your payout.",
+    },
+    ['taco'] = {
+        vpn = true,
+        label = "Taco Shop",
+        description = "Run an underground taco stand.",
+        coords = 'rep-weed:client:chiduong',
+        JobInformation = "Collect taco ingredients, cook them at your stand, and serve customers quickly to maximize earnings.",
+    },
+    ['houserobbery'] = {
+        vpn = true,
+        label = "House Robbery",
+        description = "Break into homes and grab valuables.",
+        coords = vector3(706.8385, -965.994, 0.0),
+        JobInformation = "Scope out houses with little activity, break in quietly, and search for valuables. Watch for alarms or nearby residents. Fence stolen goods for cash.",
+    },
+}
+
+local function PlayerHasVPN(Player)
+    local items = Player.Functions.GetItemsByName('vpn')
+    return items and #items > 0
+end
+
+-- Return job list to phone
+lib.callback.register('ignis_groups:server:getAvailableJobs', function(source)
+    local available = {}
+    local Player = QBCore.Functions.GetPlayer(source)
+    if not Player then return {} end
+    local hasVPN = PlayerHasVPN(Player)
+    for id, data in pairs(JobCenter) do
+        if not data.vpn or (data.vpn and hasVPN) then
+
+            local maxPlayers = Config.JobPlayerLimits[id] or 6
+            local activePlayers = CountPlayersInJob(id) or 0
+
+            table.insert(available, {
+                id = id,
+                label = data.label,
+                description = data.description,
+                coords = {
+                    x = data.coords.x,
+                    y = data.coords.y,
+                    z = data.coords.z
+                },
+                vpn = data.vpn or false,
+                -- 🔥 NEW: required by phone UI
+                capacity = activePlayers,
+                maxCapacity = maxPlayers,
+            })
+        end
+    end
+    print("AVAILABLE JOBS:")
+    print(json.encode(available))
+    return available
+end)
+
+-- Handle GPS button
+RegisterNetEvent('ignis_groups:server:setJobWaypoint', function(data)
+    local src = source
+    local jobId = data and data.jobId or data
+    local jobData = JobCenter[jobId]
+
+    if jobData then
+        local c = jobData.coords
+        if jobId == 'oxyrun' or jobId == 'taco' then
+            TriggerClientEvent(src, c)
+        end
+        TriggerClientEvent('ignis_groups:client:setWaypoint', src, { x = c.x, y = c.y, z = c.z }, jobData.label)
+    else
+        print(('[SUMMIT_PHONE] Unknown jobId %s'):format(jobId))
+    end
+end)
+
+-- Send Job Info Email to Player
+RegisterNetEvent('ignis_groups:server:sendJobInfoEmail', function(jobId)
+    local src = source
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+
+    local jobData = JobCenter[jobId]
+    if not jobData then
+        print(('[SUMMIT_PHONE] Unknown jobId for email: %s'):format(jobId))
+        return
+    end
+
+    -- Use JobInformation if available, otherwise fallback to description
+    local jobInfo = jobData.JobInformation or jobData.description or "No information available."
+
+    local emailSubject = ('Job Info - %s'):format(jobData.label)
+    local emailMessage = string.format([[
+        Hello %s,
+
+        ──────────────────────────────
+
+        Here’s your job breakdown for %s
+
+        ──────────────────────────────
+
+        📋 Summary:
+        %s
+
+        ──────────────────────────────
+
+        Remember to complete your duties carefully and return to base for payment.
+
+        City Job Center
+    ]],
+        Player.PlayerData.charinfo.firstname,
+        jobData.label,
+        jobInfo
+    )
+    local citizenId = Player.PlayerData.citizenid
+    local emailAddress = exports['summit_phone']:GetEmailIdByCitizenId(citizenId)
+
+    if emailAddress then
+        emailData = {
+            email = emailAddress,
+            subject = emailSubject,
+            message = emailMessage,
+        }
+        TriggerEvent('ignis_phone:sendNewMail', src, emailData)
     end
 end)
