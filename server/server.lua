@@ -161,12 +161,12 @@ local function RefreshGroupUI(groupId)
                 local src = Player.PlayerData.source
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', true)
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', formattedGroup)
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', src, {
-                    action = "setGroups",
-                    data = BuildGroupsArray()
-                })
             end
         end
+        TriggerClientEvent('summit_phone:client:updateGroupsApp', -1, {
+            action = "setGroups",
+            data = BuildGroupsArray()
+        })
     end)
 end
 
@@ -236,19 +236,20 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
 end)
 
 -- Join existing group
-RegisterNetEvent('ignis_groups:server:joinGroup', function(groupId, pass)
+RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
+    print(data.groupId, data.pass)
     local src    = source
     local Player = QBCore.Functions.GetPlayer(src)
     if not Player then return end
     local cid    = Player.PlayerData.citizenid
 
-    local group = Groups[groupId]
+    local group = Groups[data.groupId]
     if not group then
         TriggerClientEvent('QBCore:Notify', src, 'Group not found', 'error')
         return
     end
 
-    if group.password and group.password ~= pass then
+    if group.password and group.password ~= data.pass then
         TriggerClientEvent('QBCore:Notify', src, 'Incorrect password', 'error')
         return
     end
