@@ -32,12 +32,33 @@ AddEventHandler('rep-tablet:client:checkout', function()
 end)
 
 -- === PHONE SYNC EVENTS ===
+-- === ALWAYS NORMALIZE GROUP DATA BEFORE SENDING TO PHONE ===
+
+local function NormalizeGroups(groups)
+    -- If it's already an array, return it untouched
+    if type(groups) == "table" and groups[1] ~= nil then
+        return groups
+    end
+
+    -- Otherwise convert dictionary → array
+    local arr = {}
+    for gid, g in pairs(groups or {}) do
+        arr[#arr + 1] = g
+    end
+    return arr
+end
 RegisterNetEvent("ignis_groups:client:updateGroups", function(groups)
-    TriggerEvent('summit_phone:client:updateGroupsApp', 'setGroups', groups)
+    TriggerEvent('summit_phone:client:updateGroupsApp', {
+        action = "setGroups",
+        data = groups
+    })
 end)
 
 RegisterNetEvent('ignis_groups:client:syncGroups', function(groups)
-    TriggerEvent('summit_phone:client:updateGroupsApp', 'setGroups', groups)
+    TriggerEvent('summit_phone:client:updateGroupsApp', {
+        action = "setGroups",
+        data = groups
+    })
 end)
 
 RegisterNetEvent('ignis_groups:client:updateStatus', function(group, name, stages)

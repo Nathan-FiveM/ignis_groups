@@ -29,6 +29,29 @@ local function FormatGroup(gid, g)
     }
 end
 
+local function BuildGroupsArray()
+    local groupsArray = {}
+    for gid, g in pairs(Groups) do
+        groupsArray[#groupsArray + 1] = FormatGroup(gid, g)
+    end
+    return groupsArray
+end
+
+local function SanitizeGroup(g)
+    -- convert legacy boolean status into proper string
+    if g.status == true then
+        g.status = "active"
+    elseif g.status == false then
+        g.status = "idle"
+    end
+
+    -- always ensure members is a table
+    g.members = g.members or {}
+
+    return g
+end
+
+
 --- Send phone notification (fallback to QBCore:Notify)
 local function SendPhoneNotification(src, title, msg, app, timeout)
     if not src then return end
@@ -119,6 +142,8 @@ local function RefreshGroupUI(groupId)
                 isLeader = (playerId == group.leader),
             }
         end
+        
+        group = SanitizeGroup(group)
 
         local formattedGroup = {
             id      = groupId,
@@ -136,7 +161,10 @@ local function RefreshGroupUI(groupId)
                 local src = Player.PlayerData.source
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', true)
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', formattedGroup)
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroups', Groups)
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', src, {
+                    action = "setGroups",
+                    data = BuildGroupsArray()
+                })
             end
         end
     end)
@@ -168,9 +196,9 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
 
     -- group starts with 1 member (the creator) ALWAYS allowed
 
-    Groups[id] = {
+    Groups[id] = SanitizeGroup({
         id       = id,
-        leader   = src,                       -- leader = server id (rep-tablet compat)
+        leader   = src,
         jobType  = jobType or 'Generic',
         members  = {
             { cid = cid, name = name, player = src, vpn = hasVpn }
@@ -178,8 +206,9 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
         password = pass or nil,
         ready    = false,
         stages   = {},
-        status   = false,
-    }
+        status   = "idle",    -- ✔ good default
+    })
+
 
     DebugPrint(('Group %s created by src=%s (cid=%s, job=%s)'):format(id, src, cid, jobType or 'Generic'))
 
@@ -198,12 +227,7 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
         }
     })
 
-    TriggerClientEvent("summit_phone:client:updateGroupsApp", src, {
-        action = "setGroups",
-        data = Groups
-    })
-
-    TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
+    TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
     TriggerClientEvent("ignis_groups:client:syncClientData", src, {
         groupID = groupId,
         leader  = src
@@ -266,7 +290,7 @@ RegisterNetEvent('ignis_groups:server:joinGroup', function(groupId, pass)
 
     DebugPrint(('Player %s joined group %s'):format(src, groupId))
 
-    TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
+    TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
     TriggerClientEvent("ignis_groups:client:syncClientData", src, {
         groupID = groupId,
         leader  = group.leader
@@ -295,11 +319,10 @@ RegisterNetEvent('ignis_groups:server:leaveGroup', function()
                             local newLeader = g.members[1] and g.members[1].player
                             g.leader = newLeader
                             DebugPrint(('Group %s new leader: %s'):format(id, tostring(newLeader)))
-                            RefreshGroupUI(id)
                         end
                     end
 
-                    TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
+                    TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
 
                     if Groups[id] then
                         RefreshGroupUI(id)
@@ -307,11 +330,8 @@ RegisterNetEvent('ignis_groups:server:leaveGroup', function()
 
                     TriggerClientEvent("ignis_groups:client:syncClientData", src, {
                         groupID = groupId,
-                        leader  = group.leader
+                        leader  = g.leader
                     })
-                    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', false)
-                    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', {})
-                    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroups', Groups)
                     return
                 end
             end
@@ -336,7 +356,10 @@ RegisterNetEvent('ignis_groups:server:deleteGroup', function()
             local s = ply.PlayerData.source
             TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setInGroup', false)
             TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', {})
-            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', Groups)
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, {
+                action = "setGroups",
+                data = BuildGroupsArray()
+            })
         end
     end
 
@@ -347,7 +370,7 @@ RegisterNetEvent('ignis_groups:server:deleteGroup', function()
         groupID = groupId,
         leader  = group.leader
     })
-    TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
+    TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
 end)
 
 -- Cleanup on disconnect
@@ -682,7 +705,10 @@ local function DestroyGroup(id)
     for _, src in ipairs(members) do
         TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', false)
         TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', {})
-        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroups', Groups)
+        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, {
+            action = "setGroups",
+            data = BuildGroupsArray()
+        })
         TriggerClientEvent('ignis_groups:client:setGroupJobSteps', src, {})
         SendPhoneNotification(src, 'Group Disbanded', 'Your group has been disbanded.', 'groups', 5000)
     end
@@ -693,7 +719,7 @@ local function DestroyGroup(id)
         groupID = groupId,
         leader  = group.leader
     })
-    TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
+    TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
 end
 exports('DestroyGroup', DestroyGroup)
 
@@ -756,7 +782,10 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
             if ply then
                 local s = ply.PlayerData.source
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', group)
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', Groups)
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, {
+                    action = "setGroups",
+                    data = BuildGroupsArray()
+                })
             end
         end
     end
@@ -801,9 +830,7 @@ RegisterNetEvent('ignis_groups:server:getSetupAppData', function()
     end
 
     -- ✅ Player is in a group
-    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', true)
-    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', group)
-    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setGroups', Groups)
+    RefreshGroupUI(id)
 
     -- 🟢 If queued or active, push full sync + notification
     if group.status == "queued" or group.status == "active" then
@@ -817,7 +844,10 @@ RegisterNetEvent('ignis_groups:server:getSetupAppData', function()
             if ply then
                 local s = ply.PlayerData.source
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', group)
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', Groups)
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, {
+                    action = "setGroups",
+                    data = BuildGroupsArray()
+                })
             end
         end
     end
@@ -1072,8 +1102,6 @@ lib.callback.register('ignis_groups:server:getAvailableJobs', function(source)
             })
         end
     end
-    print("AVAILABLE JOBS:")
-    print(json.encode(available))
     return available
 end)
 
@@ -1143,4 +1171,61 @@ RegisterNetEvent('ignis_groups:server:sendJobInfoEmail', function(jobId)
         }
         TriggerEvent('ignis_phone:sendNewMail', src, emailData)
     end
+end)
+
+lib.callback.register('ignis_groups:getGroupsForJob', function(source, data)
+    print('ignis_groups hit the callback getGroupsForJob')
+    local jobType = data.jobType or data  -- support both forms
+    print(("ignis_groups getGroupsForJob src=%s jobType=%s"):format(source, tostring(jobType)))
+    if not jobType then return {} end
+
+    DebugPrint("ignis_groups getGroupsForJob", source, jobType)
+
+    local results = {}
+
+    for id, group in pairs(Groups) do
+
+        -- fix old broken group data
+        group = SanitizeGroup(group)
+
+        if group.jobType == jobType then
+            table.insert(results, {
+                id = id,
+                jobType = group.jobType,
+                leader = group.leader,
+                memberCount = #(group.members or {}),
+                status = group.status,
+                members = group.members,
+            })
+        end
+    end
+
+    return results
+end)
+
+
+RegisterCommand('dummygroupsani', function(source)
+    local id = "dummy_" .. math.random(1000, 9999)
+
+    Groups[id] = {
+        id       = id,
+        leader   = 0,           -- not tied to any player
+        jobType  = "sani",
+        status   = "idle",
+        password = false,
+        stages   = {},
+        members  = {
+            {
+                cid    = "npc_sani",
+                name   = "AI Worker",
+                player = 0,      -- IMPORTANT → not a real session
+                vpn    = false,
+            }
+        }
+    }
+
+
+    print(("Dummy group %s created for job 'sani'"):format(id))
+    TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
+    RefreshGroupUI(id)
 end)
