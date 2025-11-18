@@ -226,74 +226,6 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
     RefreshGroupUI(id)
 end)
 
--- Join existing group
-RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
-    local src  = source
-    local gid  = data.groupId or data.id  -- ⭐ accept both
-    local pass = data.pass or ""
-
-    print("JoinGroup: incoming gid =", gid, "pass =", pass)
-
-    if not gid or not Groups[gid] then
-        TriggerClientEvent('QBCore:Notify', src, 'Group not found', 'error')
-        return
-    end
-
-    local group = Groups[gid]
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-    local cid = Player.PlayerData.citizenid
-
-    if group.password and group.password ~= data.pass then
-        TriggerClientEvent('QBCore:Notify', src, 'Incorrect password', 'error')
-        return
-    end
-
-    -- Already in any group?
-    for _, g in pairs(Groups) do
-        for _, m in ipairs(g.members or {}) do
-            if m.cid == cid then
-                TriggerClientEvent('QBCore:Notify', src, 'You are already in a group', 'error')
-                return
-            end
-        end
-    end
-
-    -- Already in this group?
-    for _, m in ipairs(group.members or {}) do
-        if m.cid == cid then
-            TriggerClientEvent('QBCore:Notify', src, 'You are already in this group', 'error')
-            return
-        end
-    end
-
-    local maxGroupSize = Config.GroupPlayerLimits[group.jobType] or Config.DefaultGroupLimit
-    local currentMembers = #group.members
-
-    if currentMembers >= maxGroupSize then
-        return TriggerClientEvent('QBCore:Notify', src, "This group is full!", "error")
-    end
-
-    local hasVpn = HasVPN(Player)
-    local name   = hasVpn and GenerateAlias(cid) or GetPlayerCharName(src)
-
-    group.members[#group.members + 1] = {
-        cid    = cid,
-        name   = name,
-        player = src,
-        vpn    = hasVpn,
-    }
-
-    DebugPrint(('Player %s joined group %s'):format(src, gid))
-
-    TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
-    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
-        groupID = gid,
-        leader  = group.leader
-    })
-    RefreshGroupUI(gid)
-end)
-
 -- Leave current group
 RegisterNetEvent('ignis_groups:server:leaveGroup', function()
     local src    = source
@@ -1186,6 +1118,131 @@ lib.callback.register('ignis_groups:getGroupsForJob', function(source, data)
     return results
 end)
 
+RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
+    local src  = source
+    local gid  = data.groupId or data.id
+    local pass = data.pass or ""
+
+    DebugPrint("JoinGroup REQUEST: incoming gid =", gid)
+
+    if not gid or not Groups[gid] then
+        TriggerClientEvent('QBCore:Notify', src, 'Group not found', 'error')
+        return
+    end
+
+    local group   = Groups[gid]
+    local Player  = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+
+    local cid     = Player.PlayerData.citizenid
+
+    -- password check
+    if group.password and group.password ~= pass then
+        TriggerClientEvent('QBCore:Notify', src, 'Incorrect password', 'error')
+        return
+    end
+
+    -- already in ANY group
+    for _, g in pairs(Groups) do
+        for _, m in ipairs(g.members or {}) do
+            if m.cid == cid then
+                TriggerClientEvent('QBCore:Notify', src, 'You are already in a group', 'error')
+                return
+            end
+        end
+    end
+
+    -- send join request to leader instead of auto-joining
+    local leaderSrc = group.leader
+    if not leaderSrc then
+        TriggerClientEvent('QBCore:Notify', src, 'Group leader unavailable', 'error')
+        return
+    end
+
+    local requesterName = GetPlayerCharName(src)
+
+    local joinRequest = {
+        id = 'joinRequest_' .. gid .. "_" .. cid .. "_" .. math.random(1000,9999),
+        title = "Group Join Request",
+        description = requesterName .. " wants to join your group",
+        app = "groups",
+        icons = {
+            ['0'] = {
+                icon = "https://ignis-rp.com/uploads/server/phone/cross-circle.svg",
+                isServer = true,
+                event = 'ignis_groups:server:denyJoin',
+                args = { requester = src, groupId = gid }
+            },
+            ['1'] = {
+                icon = "https://ignis-rp.com/uploads/server/phone/accept.svg",
+                isServer = true,
+                event = 'ignis_groups:server:acceptJoin',
+                args = { requester = src, groupId = gid }
+            }
+        }
+    }
+
+    TriggerClientEvent('phone:addActionNotification', leaderSrc, json.encode(joinRequest))
+    TriggerClientEvent('QBCore:Notify', src, 'Join request sent to group leader', 'primary')
+end)
+-- ============================================================
+-- The LEADER accepts the join request
+-- ============================================================
+RegisterNetEvent('ignis_groups:server:acceptJoin', function(notificationId, data)
+    local leaderSrc = source
+    local requester = data.requester
+    local gid       = data.groupId
+
+    TriggerClientEvent('phone:client:removeActionNotification', leaderSrc, notificationId)
+
+    local group = Groups[gid]
+    if not group then return end
+
+    local Player = QBCore.Functions.GetPlayer(requester)
+    if not Player then return end
+
+    local cid     = Player.PlayerData.citizenid
+    local hasVpn  = HasVPN(Player)
+    local name    = hasVpn and GenerateAlias(cid) or GetPlayerCharName(requester)
+
+    group.members[#group.members + 1] = {
+        cid    = cid,
+        name   = name,
+        player = requester,
+        vpn    = hasVpn
+    }
+
+    DebugPrint(("[IGNIS_GROUPS] Leader %s accepted %s → group %s"):format(leaderSrc, requester, gid))
+
+    TriggerClientEvent('QBCore:Notify', requester, 'You joined the group!', 'success')
+    TriggerClientEvent('QBCore:Notify', leaderSrc, 'Player added to group', 'success')
+
+    RefreshGroupUI(gid)
+end)
+-- ============================================================
+-- The LEADER denies the join request
+-- ============================================================
+RegisterNetEvent('ignis_groups:server:denyJoin', function(notificationId, data)
+    local leaderSrc = source
+    local requester = data.requester
+
+    TriggerClientEvent('phone:client:removeActionNotification', leaderSrc, notificationId)
+
+    DebugPrint(("[IGNIS_GROUPS] Leader %s denied join request for %s"):format(leaderSrc, requester))
+
+    TriggerClientEvent('QBCore:Notify', requester, 'Your request was denied', 'error')
+end)
+
+RegisterNetEvent('ignis_groups:server:signOutJob', function()
+    local src = source
+    local group, id = GetGroupByMembers(src)
+    if not group or not id then return end
+
+    group.status = "idle"
+    print(("[IGNIS_GROUPS] Player %s signed out of job; group %s reset to idle"):format(src, id))
+
+    RefreshGroupUI(id)
+end)
 
 RegisterCommand('dummygroupsani', function(source)
     local id = "dummy_" .. math.random(1000, 9999)
@@ -1208,7 +1265,7 @@ RegisterCommand('dummygroupsani', function(source)
     }
 
 
-    print(("Dummy group %s created for job 'sani'"):format(id))
+    DebugPrint(("Dummy group %s created for job 'sani'"):format(id))
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, Groups)
     RefreshGroupUI(id)
 end)
