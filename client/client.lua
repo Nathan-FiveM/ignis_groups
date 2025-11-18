@@ -1,25 +1,6 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 local ActiveBlips = {}
 
--- === BLIPS ===
-RegisterNetEvent('ignis_groups:client:createBlip', function(group, name, data)
-    if ActiveBlips[name] then RemoveBlip(ActiveBlips[name]) end
-    local blip = AddBlipForCoord(data.coords.x, data.coords.y, data.coords.z)
-    SetBlipSprite(blip, data.sprite or 1)
-    SetBlipColour(blip, data.color or 0)
-    BeginTextCommandSetBlipName('STRING')
-    AddTextComponentString(data.label or name)
-    EndTextCommandSetBlipName(blip)
-    ActiveBlips[name] = blip
-end)
-
-RegisterNetEvent('ignis_groups:client:removeBlip', function(group, name)
-    if ActiveBlips[name] then
-        RemoveBlip(ActiveBlips[name])
-        ActiveBlips[name] = nil
-    end
-end)
-
 ------------------------------------------------------------
 --  LEGACY EVENT: Job Checkout / SignOut (used by Rep Scripts)
 ------------------------------------------------------------
@@ -48,34 +29,26 @@ local function NormalizeGroups(groups)
     return arr
 end
 RegisterNetEvent("ignis_groups:client:updateGroups", function(groups)
-    TriggerEvent('summit_phone:client:updateGroupsApp', {
-        action = "setGroups",
-        data = groups
-    })
+    TriggerEvent('summit_phone:client:updateGroupsApp', "setGroups", groups)
 end)
 
 RegisterNetEvent('ignis_groups:client:syncGroups', function(groups)
-    TriggerEvent('summit_phone:client:updateGroupsApp', {
-        action = "setGroups",
-        data = groups
-    })
+    TriggerEvent('summit_phone:client:updateGroupsApp', "setGroups", groups)
 end)
 
 RegisterNetEvent('ignis_groups:client:updateStatus', function(group, name, stages)
-    TriggerEvent('summit_phone:client:updateGroupsApp', 'updateStatus', { group = group, name = name, stages = stages })
+    TriggerEvent('summit_phone:client:updateGroupsApp', "updateStatus", { group = group, name = name, stages = stages })
 end)
 
 RegisterNetEvent('ignis_groups:client:setGroupJobSteps', function(stages)
     inJob = true
-    TriggerEvent('summit_phone:client:updateGroupsApp', 'setGroupJobSteps', stages)
+    TriggerEvent('summit_phone:client:updateGroupsApp', "setGroupJobSteps", stages)
 end)
 
 -- Legacy closeAllNotification event
 RegisterNetEvent('rep-tablet:client:closeAllNotification', function()
     exports['summit_phone']:SendCustomAppMessage('closeNotification', {})
 end)
-
-local ActiveBlips = {}
 
 -- === CREATE BLIP FOR GROUP ===
 RegisterNetEvent('ignis_groups:client:createBlip', function(group, name, data)

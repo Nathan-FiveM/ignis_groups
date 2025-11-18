@@ -6,21 +6,31 @@ ActiveVPN = ActiveVPN or {}
 
 local function FormatGroup(gid, g)
     if not g then return {} end
-    local members = {}
 
-    for _, m in ipairs(g.members or {}) do
+    g.members = g.members or {}
+
+    local members = {}
+    local leaderName = g.jobType or ("Group " .. gid)
+
+    for _, m in ipairs(g.members) do
+        local isLeader = (m.player == g.leader)
+
+        if isLeader and m.name then
+            leaderName = m.name
+        end
+
         members[#members + 1] = {
             cid      = m.cid,
             name     = m.name,
             vpn      = m.vpn or false,
             player   = m.player or 0,
-            isLeader = (m.player == g.leader)
+            isLeader = isLeader
         }
     end
 
     return {
         id      = gid,
-        name    = g.jobType or ("Group " .. gid),
+        name    = leaderName or ("Group " .. gid), -- 🟢 leader’s name
         jobType = g.jobType or "generic",
         status  = g.status or "idle",
         leader  = g.leader,
@@ -28,6 +38,7 @@ local function FormatGroup(gid, g)
         stages  = g.stages or {}
     }
 end
+
 
 local function BuildGroupsArray()
     local groupsArray = {}
@@ -144,29 +155,18 @@ local function RefreshGroupUI(groupId)
         end
         
         group = SanitizeGroup(group)
-
-        local formattedGroup = {
-            id      = groupId,
-            name    = group.jobType or ('Group ' .. groupId),
-            leader  = group.leader,
-            members = groupMembers,
-            status  = group.status or 'idle',
-            stages  = group.stages or {},
-            jobType = group.jobType or 'Generic',
-        }
+        local formattedGroup = FormatGroup(groupId, group)
+        formattedGroup.members = groupMembers  -- keep detailed member entries
 
         for _, m in ipairs(group.members or {}) do
             local Player = QBCore.Functions.GetPlayerByCitizenId(m.cid)
             if Player then
                 local src = Player.PlayerData.source
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', true)
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setInGroup", true)
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', formattedGroup)
             end
         end
-        TriggerClientEvent('summit_phone:client:updateGroupsApp', -1, {
-            action = "setGroups",
-            data = BuildGroupsArray()
-        })
+        TriggerClientEvent('summit_phone:client:updateGroupsApp', -1, "setGroups", BuildGroupsArray())
     end)
 end
 
@@ -212,42 +212,37 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
 
     DebugPrint(('Group %s created by src=%s (cid=%s, job=%s)'):format(id, src, cid, jobType or 'Generic'))
 
-    TriggerClientEvent("summit_phone:client:updateGroupsApp", src, {
-        action = "setInGroup",
-        data = true,
-    })
+    TriggerClientEvent("summit_phone:client:updateGroupsApp", src, "setInGroup", true)
 
-    TriggerClientEvent("summit_phone:client:updateGroupsApp", src, {
-        action = "setCurrentGroup",
-        data = {
-            jobType = jobType,
-            members = Groups[id].members,
-            leader  = src,
-            id      = id,
-        }
+    TriggerClientEvent("summit_phone:client:updateGroupsApp", src, "setCurrentGroup", {
+        jobType = jobType,
+        members = Groups[id].members,
+        leader  = src,
+        id      = id,
     })
 
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
-    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
-        groupID = groupId,
-        leader  = src
-    })
+    TriggerClientEvent("ignis_groups:client:syncClientData", src, id, src)
     RefreshGroupUI(id)
 end)
 
 -- Join existing group
 RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
-    print(data.groupId, data.pass)
-    local src    = source
-    local Player = QBCore.Functions.GetPlayer(src)
-    if not Player then return end
-    local cid    = Player.PlayerData.citizenid
+    local src  = source
+    local gid  = data.groupId or data.id  -- ⭐ accept both
+    local pass = data.pass or ""
 
-    local group = Groups[data.groupId]
-    if not group then
+    print("JoinGroup: incoming gid =", gid, "pass =", pass)
+
+    if not gid or not Groups[gid] then
         TriggerClientEvent('QBCore:Notify', src, 'Group not found', 'error')
         return
     end
+
+    local group = Groups[gid]
+    local Player = QBCore.Functions.GetPlayer(src)
+    if not Player then return end
+    local cid = Player.PlayerData.citizenid
 
     if group.password and group.password ~= data.pass then
         TriggerClientEvent('QBCore:Notify', src, 'Incorrect password', 'error')
@@ -289,14 +284,14 @@ RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
         vpn    = hasVpn,
     }
 
-    DebugPrint(('Player %s joined group %s'):format(src, groupId))
+    DebugPrint(('Player %s joined group %s'):format(src, gid))
 
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
     TriggerClientEvent("ignis_groups:client:syncClientData", src, {
-        groupID = groupId,
+        groupID = gid,
         leader  = group.leader
     })
-    RefreshGroupUI(groupId)
+    RefreshGroupUI(gid)
 end)
 
 -- Leave current group
@@ -329,10 +324,14 @@ RegisterNetEvent('ignis_groups:server:leaveGroup', function()
                         RefreshGroupUI(id)
                     end
 
-                    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
-                        groupID = groupId,
-                        leader  = g.leader
-                    })
+                    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setCurrentGroup", { jobType = g.jobType, members = {}, id = nil })
+                    
+                    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setInGroup", false)
+
+                    TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setGroups", BuildGroupsArray())
+
+                    TriggerClientEvent("ignis_groups:client:syncClientData", src, id, g.leader)
+
                     return
                 end
             end
@@ -355,12 +354,9 @@ RegisterNetEvent('ignis_groups:server:deleteGroup', function()
         local ply = QBCore.Functions.GetPlayerByCitizenId(m.cid)
         if ply then
             local s = ply.PlayerData.source
-            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setInGroup', false)
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, "setInGroup", false)
             TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', {})
-            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, {
-                action = "setGroups",
-                data = BuildGroupsArray()
-            })
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, "setGroups", BuildGroupsArray())
         end
     end
 
@@ -368,7 +364,7 @@ RegisterNetEvent('ignis_groups:server:deleteGroup', function()
     DebugPrint(('Group %s deleted by %s'):format(id, src))
 
     TriggerClientEvent("ignis_groups:client:syncClientData", src, {
-        groupID = groupId,
+        groupID = id,
         leader  = group.leader
     })
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
@@ -483,7 +479,7 @@ RegisterNetEvent('ignis_groups:server:readyForJob', function()
             for gid, g in pairs(Groups) do
                 groupsArray[#groupsArray + 1] = FormatGroup(gid, g)
             end
-            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', groupsArray)
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, "setGroups", groupsArray)
 
             SendPhoneNotification(
                 s,
@@ -534,7 +530,7 @@ RegisterNetEvent('ignis_groups:server:leaveQueue', function()
             for gid, g in pairs(Groups) do
                 groupsArray[#groupsArray + 1] = FormatGroup(gid, g)
             end
-            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setGroups', groupsArray)
+            TriggerClientEvent('summit_phone:client:updateGroupsApp', s, "setGroups", groupsArray)
 
             SendPhoneNotification(
                 s,
@@ -704,12 +700,9 @@ local function DestroyGroup(id)
 
     local members = getGroupMembers(id) or {}
     for _, src in ipairs(members) do
-        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', false)
+        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setInGroup", false)
         TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setCurrentGroup', {})
-        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, {
-            action = "setGroups",
-            data = BuildGroupsArray()
-        })
+        TriggerClientEvent('summit_phone:client:updateGroupsApp', src,  "setGroups", BuildGroupsArray())
         TriggerClientEvent('ignis_groups:client:setGroupJobSteps', src, {})
         SendPhoneNotification(src, 'Group Disbanded', 'Your group has been disbanded.', 'groups', 5000)
     end
@@ -717,7 +710,7 @@ local function DestroyGroup(id)
     Groups[id] = nil
     print(('[IGNIS_GROUPS] DestroyGroup: %s removed'):format(id))
     TriggerClientEvent("ignis_groups:client:syncClientData", src, {
-        groupID = groupId,
+        groupID = id,
         leader  = group.leader
     })
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
@@ -741,16 +734,11 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
     local groupsArray = {}
 
     for gid, g in pairs(Groups) do
-        groupsArray[#groupsArray + 1] = {
-            id          = gid,
-            name        = g.jobType or ('Group ' .. gid),
-            memberCount = #(g.members or {}),
-            status      = g.status == "queued" and "queued" or (g.status == true and "busy" or "idle"),
-            leader      = g.leader,
-            members     = g.members or {},
-            jobType     = g.jobType or 'Generic',
-        }
+        local formatted = FormatGroup(gid, g)
+        formatted.memberCount = #(g.members or {})
+        groupsArray[#groupsArray + 1] = formatted
     end
+
 
     local groupMembers = {}
     local stages       = {}
@@ -782,11 +770,8 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
             local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
             if ply then
                 local s = ply.PlayerData.source
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', group)
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, {
-                    action = "setGroups",
-                    data = BuildGroupsArray()
-                })
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', FormatGroup(id, group))
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, "setGroups", BuildGroupsArray())
             end
         end
     end
@@ -826,12 +811,9 @@ RegisterNetEvent('ignis_groups:server:getSetupAppData', function()
 
     if not group then
         -- ❌ Not in a group, fallback to job center
-        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, 'setInGroup', false)
+        TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setInGroup", false)
         return
     end
-
-    -- ✅ Player is in a group
-    RefreshGroupUI(id)
 
     -- 🟢 If queued or active, push full sync + notification
     if group.status == "queued" or group.status == "active" then
@@ -844,14 +826,14 @@ RegisterNetEvent('ignis_groups:server:getSetupAppData', function()
             local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
             if ply then
                 local s = ply.PlayerData.source
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', group)
-                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, {
-                    action = "setGroups",
-                    data = BuildGroupsArray()
-                })
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', FormatGroup(id, group))
+                TriggerClientEvent('summit_phone:client:updateGroupsApp', s, "setGroups", BuildGroupsArray())
             end
         end
     end
+
+    -- ✅ Player is in a group
+    RefreshGroupUI(id)
 end)
 
 -- ####################################################################

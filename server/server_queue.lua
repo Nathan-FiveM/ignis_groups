@@ -43,17 +43,15 @@ CreateThread(function()
                     }
                 }
             }
+            -- Send job offer ONLY to the leader
+            local leaderSrc = group.leader
+            local leaderPly = QBCore.Functions.GetPlayer(leaderSrc)
 
-            for _, member in ipairs(group.members or {}) do
-                local cid = member.cid or member
-                local ply = QBCore.Functions.GetPlayerByCitizenId(cid)
-                if ply then
-                    local src = member.playerId
-                    print(('[IGNIS_GROUPS] Sending notification to %s (%s)'):format(src, cid))
-                    TriggerClientEvent('phone:addActionNotification', src, json.encode(actionData))
-                else
-                    print(('[IGNIS_GROUPS] Skipping %s — player not found'):format(cid))
-                end
+            if leaderPly then
+                print(('[IGNIS_GROUPS] Sending job offer ONLY to leader %s for group %s'):format(leaderSrc, nextGroupId))
+                TriggerClientEvent('phone:addActionNotification', leaderSrc, json.encode(actionData))
+            else
+                print(('[IGNIS_GROUPS] Leader %s not found when offering job %s'):format(leaderSrc, jobType))
             end
 
             ::continue::
@@ -74,8 +72,9 @@ RegisterNetEvent('ignis_groups:acceptJob', function(notificationId, data)
     for _, member in ipairs(group.members or {}) do
         local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
         if ply then
-            print(('[IGNIS_GROUPS] Triggering Rep-Tablet readyforjob for %s (%s)'):format(member.playerId, member.cid))
-            TriggerClientEvent('rep-tablet:client:readyforjob', member.playerId)
+            local playerId = member.player or member.playerId or 0
+            print(('[IGNIS_GROUPS] Triggering Rep-Tablet readyforjob for %s (%s)'):format(playerId, member.cid))
+            TriggerClientEvent('rep-tablet:client:readyforjob', playerId)
         else
             print(('[IGNIS_GROUPS] Could not find player with CID %s (may be offline)'):format(tostring(member.cid)))
         end
