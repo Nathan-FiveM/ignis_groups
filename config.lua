@@ -1,5 +1,8 @@
 Config = {}
 
+Config.Framework = "qbcore" -- qbcore/qbox
+Config.Notify = 'ox' -- ox/qbcore
+
 Config.DefaultGroupLimit = 4
 
 Config.LocalStates = { -- nghe states for each job type that is currently set up

@@ -59,11 +59,14 @@ Config.GroupPlayerLimits = {
 
 ---
 
-## 📦 Dependencies
+## Dependencies
 
-- [QBCore Framework](https://github.com/qbcore-framework)
-- [ox_lib](https://github.com/overextended/ox_lib)
-- [summit_phone](https://github.com/Nathan-FiveM/summit_phone)
+### Required
+| Dependency | Description |
+|-----------|-------------|
+| **[QBCore Framework](https://github.com/qbcore-framework)** *or* **qbox** | Primary framework |
+| **[ox_lib](https://github.com/overextended/ox_lib)** | Zones and notifications (if configured) |
+| **[summit_phone](https://github.com/Nathan-FiveM/summit_phone)** | Displays job stages to players |
 
 ---
 

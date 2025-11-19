@@ -1,4 +1,4 @@
-local QBCore = exports['qb-core']:GetCoreObject()
+FRAMEWORK()
 
 -- Global groups table comes from shared.lua, but ensure it exists
 Groups    = Groups or {}
@@ -62,8 +62,6 @@ local function SanitizeGroup(g)
     return g
 end
 
-
---- Send phone notification (fallback to QBCore:Notify)
 local function SendPhoneNotification(src, title, msg, app, timeout)
     if not src then return end
     local jsonData = json.encode({
@@ -85,7 +83,7 @@ end
 
 -- Get "Firstname Lastname" for a player
 local function GetPlayerCharName(src)
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = GETPLAYER(src)
     if not Player then return "Unknown" end
     local info = Player.PlayerData.charinfo or {}
     return ("%s %s"):format(info.firstname or "John", info.lastname or "Doe")
@@ -137,7 +135,7 @@ local function RefreshGroupUI(groupId)
         local groupMembers = {}
 
         for _, m in ipairs(group.members or {}) do
-            local Player = QBCore.Functions.GetPlayerByCitizenId(m.cid)
+            local Player = GETPLAYERBYCID(m.cid)
             local name   = m.name or "Unknown"
             local playerId = m.player or 0
 
@@ -159,7 +157,7 @@ local function RefreshGroupUI(groupId)
         formattedGroup.members = groupMembers  -- keep detailed member entries
 
         for _, m in ipairs(group.members or {}) do
-            local Player = QBCore.Functions.GetPlayerByCitizenId(m.cid)
+            local Player = GETPLAYERBYCID(m.cid)
             if Player then
                 local src = Player.PlayerData.source
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setInGroup", true)
@@ -177,7 +175,7 @@ end
 -- Create new group (with optional password & jobType)
 RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
     local src    = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = GETPLAYER(src)
     if not Player then return end
 
     local cid     = Player.PlayerData.citizenid
@@ -233,7 +231,7 @@ end)
 -- Leave current group
 RegisterNetEvent('ignis_groups:server:leaveGroup', function()
     local src    = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = GETPLAYER(src)
     if not Player then return end
     local cid    = Player.PlayerData.citizenid
 
@@ -289,7 +287,7 @@ RegisterNetEvent('ignis_groups:server:deleteGroup', function()
     local members = g.members or {}
 
     for _, m in ipairs(members) do
-        local ply = QBCore.Functions.GetPlayerByCitizenId(m.cid)
+        local ply = GETPLAYERBYCID(m.cid)
         if ply then
             local s = ply.PlayerData.source
             TriggerClientEvent('summit_phone:client:updateGroupsApp', s, "setInGroup", false)
@@ -311,7 +309,7 @@ end)
 -- Cleanup on disconnect
 AddEventHandler('playerDropped', function()
     local src    = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = GETPLAYER(src)
     if not Player then return end
     local cid    = Player.PlayerData.citizenid
 
@@ -382,7 +380,7 @@ RegisterNetEvent('ignis_groups:server:readyForJob', function()
     local newTotal = activePlayers + #group.members
 
     if newTotal > maxPlayers then
-        TriggerClientEvent('QBCore:Notify', src, "This job’s queue is full!", "error")
+        NOTIFY(src, "This job’s queue is full!", "error")
         return
     end
     -- Cooldown Check
@@ -392,7 +390,7 @@ RegisterNetEvent('ignis_groups:server:readyForJob', function()
 
         if cd and cd.jobType == jobType and cd.expires > os.time() then
             local remaining = cd.expires - os.time()
-            TriggerClientEvent('QBCore:Notify', src, ("Cooldown: %ds remaining"):format(remaining), "error")
+            NOTIFY(src, ("Cooldown: %ds remaining"):format(remaining), "error")
             return
         end
     end
@@ -407,7 +405,7 @@ RegisterNetEvent('ignis_groups:server:readyForJob', function()
     local formatted = FormatGroup(id, group)
 
     for _, member in ipairs(group.members or {}) do
-        local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+        local ply = GETPLAYERBYCID(member.cid)
         if ply then
             local s = ply.PlayerData.source
 
@@ -457,7 +455,7 @@ RegisterNetEvent('ignis_groups:server:leaveQueue', function()
 
     -- Update ALL group members' phones
     for _, member in ipairs(group.members or {}) do
-        local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+        local ply = GETPLAYERBYCID(member.cid)
         if ply then
             local s = ply.PlayerData.source
 
@@ -483,7 +481,7 @@ end)
 
 -- Returns (groupTable, groupId)
 function GetGroupByMembers(src)
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = GETPLAYER(src)
     if not Player then return nil, nil end
 
     local cid = Player.PlayerData.citizenid
@@ -587,7 +585,7 @@ local function pNotifyGroup(id, title, msg, icon, color, time)
     if not g then return end
 
     for _, m in ipairs(g.members or {}) do
-        local ply = QBCore.Functions.GetPlayerByCitizenId(m.cid)
+        local ply = GETPLAYERBYCID(m.cid)
         if ply then
             local src = ply.PlayerData.source
             SendPhoneNotification(src, title, msg, 'groups', time or 5000)
@@ -682,7 +680,7 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
 
     if group then
         for _, m in ipairs(group.members or {}) do
-            local ply = QBCore.Functions.GetPlayerByCitizenId(m.cid)
+            local ply = GETPLAYERBYCID(m.cid)
             local playerId = m.player
             local name = m.name
             if ply and not m.vpn then
@@ -704,7 +702,7 @@ lib.callback.register('ignis_groups:getSetupAppData', function(source)
     if group and (group.status == "queued" or group.status == "active") then
         DebugPrint(('[IGNIS_GROUPS] Auto-syncing group %s (%s) to members'):format(id, group.status))
         for _, member in ipairs(group.members or {}) do
-            local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+            local ply = GETPLAYERBYCID(member.cid)
             if ply then
                 local s = ply.PlayerData.source
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', FormatGroup(id, group))
@@ -760,7 +758,7 @@ RegisterNetEvent('ignis_groups:server:getSetupAppData', function()
 
         -- ✅ Push sync for all members
         for _, member in ipairs(group.members or {}) do
-            local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+            local ply = GETPLAYERBYCID(member.cid)
             if ply then
                 local s = ply.PlayerData.source
                 TriggerClientEvent('summit_phone:client:updateGroupsApp', s, 'setCurrentGroup', FormatGroup(id, group))
@@ -825,7 +823,7 @@ end)
 exports('CreateBlipForGroup', function(group, name, data)
     if not group or not data then return end
     for _, member in ipairs(Groups[group].members or {}) do
-        local Player = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+        local Player = GETPLAYERBYCID(member.cid)
         if Player then
             if member.cid == Player.PlayerData.citizenid then
                 TriggerClientEvent('ignis_groups:client:createBlip', Player.PlayerData.source, group, name, data)
@@ -838,7 +836,7 @@ end)
 exports('RemoveBlipForGroup', function(group, name)
     if not group then return end
     for _, member in ipairs(Groups[group].members or {}) do
-        local Player = QBCore.Functions.GetPlayerByCitizenId(member.cid)
+        local Player = GETPLAYERBYCID(member.cid)
         if Player then
             TriggerClientEvent('ignis_groups:client:removeBlip', Player.PlayerData.source, group, name)
         end
@@ -847,7 +845,7 @@ end)
 
 RegisterNetEvent('ignis_groups:server:updateVPN', function(hasVpn)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = GETPLAYER(src)
     if not Player then return end
     local cid = Player.PlayerData.citizenid
 
@@ -859,23 +857,21 @@ RegisterNetEvent('ignis_groups:server:updateVPN', function(hasVpn)
 end)
 
 -- CLIENT CALLBACK: Get group the player belongs to
-QBCore.Functions.CreateCallback('ignis_groups:getMyGroup', function(source, cb)
+lib.callback.register('ignis_groups:getMyGroup', function(source)
     local group, id = GetGroupByMembers(source)
-    cb({
+    return {
         group = group,
         id = id
-    })
+    }
 end)
 
 -- CLIENT CALLBACK: Get leader of a group
-QBCore.Functions.CreateCallback('ignis_groups:getGroupLeader', function(source, cb)
+lib.callback.register('ignis_groups:getGroupLeader', function(source)
     local group, id = GetGroupByMembers(source)
     if not group then
-        cb(nil)
         return
     end
-
-    cb(group.leader)
+    return group.leader
 end)
 
 local JobCenter = {
@@ -997,7 +993,7 @@ end
 -- Return job list to phone
 lib.callback.register('ignis_groups:server:getAvailableJobs', function(source)
     local available = {}
-    local Player = QBCore.Functions.GetPlayer(source)
+    local Player = GETPLAYER(source)
     if not Player then return {} end
     local hasVPN = PlayerHasVPN(Player)
     for id, data in pairs(JobCenter) do
@@ -1045,7 +1041,7 @@ end)
 -- Send Job Info Email to Player
 RegisterNetEvent('ignis_groups:server:sendJobInfoEmail', function(jobId)
     local src = source
-    local Player = QBCore.Functions.GetPlayer(src)
+    local Player = GETPLAYER(src)
     if not Player then return end
 
     local jobData = JobCenter[jobId]
@@ -1131,19 +1127,19 @@ RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
     DebugPrint("JoinGroup REQUEST: incoming gid =", gid)
 
     if not gid or not Groups[gid] then
-        TriggerClientEvent('QBCore:Notify', src, 'Group not found', 'error')
+        NOTIFY(src, 'Group not found', 'error')
         return
     end
 
     local group   = Groups[gid]
-    local Player  = QBCore.Functions.GetPlayer(src)
+    local Player  = GETPLAYER(src)
     if not Player then return end
 
     local cid     = Player.PlayerData.citizenid
 
     -- password check
     if group.password and group.password ~= pass then
-        TriggerClientEvent('QBCore:Notify', src, 'Incorrect password', 'error')
+        NOTIFY(src, 'Incorrect password', 'error')
         return
     end
 
@@ -1151,7 +1147,7 @@ RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
     for _, g in pairs(Groups) do
         for _, m in ipairs(g.members or {}) do
             if m.cid == cid then
-                TriggerClientEvent('QBCore:Notify', src, 'You are already in a group', 'error')
+                NOTIFY(src, 'You are already in a group', 'error')
                 return
             end
         end
@@ -1160,7 +1156,7 @@ RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
     -- send join request to leader instead of auto-joining
     local leaderSrc = group.leader
     if not leaderSrc then
-        TriggerClientEvent('QBCore:Notify', src, 'Group leader unavailable', 'error')
+        NOTIFY(src, 'Group leader unavailable', 'error')
         return
     end
 
@@ -1188,7 +1184,7 @@ RegisterNetEvent('ignis_groups:server:joinGroup', function(data)
     }
 
     TriggerClientEvent('phone:addActionNotification', leaderSrc, json.encode(joinRequest))
-    TriggerClientEvent('QBCore:Notify', src, 'Join request sent to group leader', 'primary')
+    NOTIFY(src, 'Join request sent to group leader', 'primary')
 end)
 -- ============================================================
 -- The LEADER accepts the join request
@@ -1203,7 +1199,7 @@ RegisterNetEvent('ignis_groups:server:acceptJoin', function(notificationId, data
     local group = Groups[gid]
     if not group then return end
 
-    local Player = QBCore.Functions.GetPlayer(requester)
+    local Player = GETPLAYER(requester)
     if not Player then return end
 
     local cid     = Player.PlayerData.citizenid
@@ -1219,8 +1215,8 @@ RegisterNetEvent('ignis_groups:server:acceptJoin', function(notificationId, data
 
     DebugPrint(("[IGNIS_GROUPS] Leader %s accepted %s → group %s"):format(leaderSrc, requester, gid))
 
-    TriggerClientEvent('QBCore:Notify', requester, 'You joined the group!', 'success')
-    TriggerClientEvent('QBCore:Notify', leaderSrc, 'Player added to group', 'success')
+    NOTIFY(requester, 'You joined the group!', 'success')
+    NOTIFY(leaderSrc, 'Player added to group', 'success')
 
     RefreshGroupUI(gid)
 end)
@@ -1235,7 +1231,7 @@ RegisterNetEvent('ignis_groups:server:denyJoin', function(notificationId, data)
 
     DebugPrint(("[IGNIS_GROUPS] Leader %s denied join request for %s"):format(leaderSrc, requester))
 
-    TriggerClientEvent('QBCore:Notify', requester, 'Your request was denied', 'error')
+    NOTIFY(requester, 'Your request was denied', 'error')
 end)
 
 RegisterNetEvent('ignis_groups:server:signOutJob', function()

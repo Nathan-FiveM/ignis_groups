@@ -1,4 +1,3 @@
-local QBCore = exports['qb-core']:GetCoreObject()
 local ActiveBlips = {}
 
 -- === PHONE SYNC EVENTS ===
@@ -94,15 +93,15 @@ RegisterNetEvent('ignis_groups:client:signOff', function()
     LocalPlayer.state:set('nghe', nil, true)
 end)
 
-exports('GetMyGroup', function(cb)
-    QBCore.Functions.TriggerCallback('ignis_groups:getMyGroup', function(data)
-        cb(data)
+exports('GetMyGroup', function()
+    lib.callback('ignis_groups:getMyGroup', false, function(data)
+        return data
     end)
 end)
 
-exports('GetMyGroupLeader', function(cb)
-    QBCore.Functions.TriggerCallback('ignis_groups:getGroupLeader', function(leader)
-        cb(leader)
+exports('GetMyGroupLeader', function()
+    lib.callback('ignis_groups:getGroupLeader', false, function(leader)
+        return leader
     end)
 end)
 
