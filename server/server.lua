@@ -566,8 +566,8 @@ local function resetJobStatus(id)
     for _, member in ipairs(g.members) do
         local cid = member.cid
         PlayerJobCooldowns[cid] = {
-            jobType = group.jobType,
-            expires = os.time() + (Config.JobCooldowns[group.jobType] or 0)
+            jobType = g.jobType,
+            expires = os.time() + (Config.JobCooldowns[g.jobType] or 0)
         }
     end
 
@@ -596,6 +596,10 @@ local function pNotifyGroup(id, title, msg, icon, color, time)
 end
 exports('pNotifyGroup', pNotifyGroup)
 exports('NotifyGroup', pNotifyGroup)
+
+RegisterNetEvent('ignis_groups:server:groupNotify', function(id, title, msg)
+    pNotifyGroup(id, title, msg)
+end)
 
 local function GroupEvent(id, event, args)
     if not id or not event then return end
