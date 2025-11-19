@@ -2,7 +2,7 @@ fx_version 'cerulean'
 game 'gta5'
 
 author 'Ignis RP'
-description 'Ignis Groups - group system for use with summit_phone with rep-tablet support'
+description 'Ignis Groups - group system for use with summit_phone'
 version '1.0.0'
 
 lua54 'yes'

@@ -1,17 +1,6 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 local ActiveBlips = {}
 
-------------------------------------------------------------
---  LEGACY EVENT: Job Checkout / SignOut (used by Rep Scripts)
-------------------------------------------------------------
-
--- old tablet used this to mark a player "done"
-AddEventHandler('rep-tablet:client:checkout', function()
-    print('[REP-TABLET STUB] Checkout triggered (job complete)')
-    isSignedIn = false
-    LocalPlayer.state:set('nghe', nil, true)
-end)
-
 -- === PHONE SYNC EVENTS ===
 -- === ALWAYS NORMALIZE GROUP DATA BEFORE SENDING TO PHONE ===
 
@@ -43,11 +32,6 @@ end)
 RegisterNetEvent('ignis_groups:client:setGroupJobSteps', function(stages)
     inJob = true
     TriggerEvent('summit_phone:client:updateGroupsApp', "setGroupJobSteps", stages)
-end)
-
--- Legacy closeAllNotification event
-RegisterNetEvent('rep-tablet:client:closeAllNotification', function()
-    exports['summit_phone']:SendCustomAppMessage('closeNotification', {})
 end)
 
 -- === CREATE BLIP FOR GROUP ===
@@ -84,6 +68,30 @@ RegisterNetEvent('ignis_groups:client:removeBlip', function(group, name)
         ActiveBlips[name] = nil
         print(('[IGNIS_GROUPS] Removed blip "%s" for group %s'):format(name or 'unknown', group or '?'))
     end
+end)
+
+RegisterNetEvent('ignis_groups:client:signIn', function(job)
+    local jobType = job or 'generic'
+    print(('[ignis_groups] Signed in for job: %s'):format(jobType))
+    LocalPlayer.state:set('nghe', jobType, false)
+    exports['summit_phone']:SendCustomAppMessage('sendPhoneNotification', {
+        app = 'groups',
+        title = '📋 Group System',
+        description = ('Signed in for %s'):format(jobType),
+        timeout = 3500
+    })
+    TriggerServerEvent('ignis_groups:server:createGroup', jobType)
+end)
+
+RegisterNetEvent('ignis_groups:client:signOff', function()
+    print('[ignis_groups] Signed off from job')
+    exports['summit_phone']:SendCustomAppMessage('sendPhoneNotification', {
+        app = 'groups',
+        title = '📋 Group System',
+        description = 'You have signed off from your group job.',
+        timeout = 3000
+    })
+    LocalPlayer.state:set('nghe', nil, true)
 end)
 
 exports('GetMyGroup', function(cb)

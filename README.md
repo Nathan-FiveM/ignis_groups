@@ -1,13 +1,13 @@
 # 🔥 Ignis Groups
 
-**Ignis Groups** is a **lightweight group and job queue system** built for [Ignis Roleplay](https://ignis-rp.com) and designed to integrate seamlessly with the **[summit_phone](https://github.com/Nathan-FiveM/summit_phone)** and **[rep-tablet](https://github.com/Rep-Scripts/rep-tablet)** frameworks.  
+**Ignis Groups** is a **lightweight group and job queue system** built for [Ignis Roleplay](https://ignis-rp.com) and designed to integrate seamlessly with the **[summit_phone](https://github.com/Nathan-FiveM/summit_phone)**.  
 It provides a persistent, synced, and phone-driven party system used for team-based jobs such as **House Robberies, Sanitation, Fishing, PostOp, and Taco runs.**
 
 ---
 
 ## ✨ Features
 
-- 🔗 **Fully integrated** with `summit_phone` and `rep-tablet`
+- 🔗 **Fully integrated** with `summit_phone`
 - 👥 Create, join, and leave player groups
 - 🔒 Optional password-protected groups
 - 📞 Phone-based group management UI
@@ -64,7 +64,6 @@ Config.GroupPlayerLimits = {
 - [QBCore Framework](https://github.com/qbcore-framework)
 - [ox_lib](https://github.com/overextended/ox_lib)
 - [summit_phone](https://github.com/Nathan-FiveM/summit_phone)
-- *(Optional)* [rep-tablet](https://github.com/Rep-Scripts/rep-tablet)
 
 ---
 
@@ -114,7 +113,6 @@ set sv_debug 1
 ## 🔄 Integration Notes
 
 - **summit_phone** handles all NUI updates (Groups app).  
-- **rep-tablet** compatibility stubs are included (`rep-tablet:client:checkout`, `rep-tablet:client:readyforjob`).  
 - Job scripts can queue groups using the `ignis_groups:server:readyForJob` event.
 
 ---

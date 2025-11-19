@@ -66,15 +66,15 @@ RegisterNetEvent('ignis_groups:acceptJob', function(notificationId, data)
     local group = Groups[gid]
     if not group then return end
 
-    print(('[IGNIS_GROUPS] Group %s accepted %s job - triggering Rep-Tablet event'):format(gid, jobType))
+    print(('[IGNIS_GROUPS] Group %s accepted %s job - triggering event'):format(gid, jobType))
 
-    -- Fire the legacy tablet client event so escrowed job scripts react normally
     for _, member in ipairs(group.members or {}) do
         local ply = QBCore.Functions.GetPlayerByCitizenId(member.cid)
         if ply then
             local playerId = member.player or member.playerId or 0
-            print(('[IGNIS_GROUPS] Triggering Rep-Tablet readyforjob for %s (%s)'):format(playerId, member.cid))
-            TriggerClientEvent('rep-tablet:client:readyforjob', playerId)
+            print(('[IGNIS_GROUPS] Triggering readyforjob for %s (%s)'):format(playerId, member.cid))
+            -- TriggerClientEvent('rep-tablet:client:readyforjob', playerId)
+            TriggerClientEvent('ignis_groups:client:readyforjob', playerId)
         else
             print(('[IGNIS_GROUPS] Could not find player with CID %s (may be offline)'):format(tostring(member.cid)))
         end

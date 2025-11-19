@@ -222,7 +222,11 @@ RegisterNetEvent('ignis_groups:server:createGroup', function(jobType, pass)
     })
 
     TriggerClientEvent('ignis_groups:client:updateGroups', -1, BuildGroupsArray())
-    TriggerClientEvent("ignis_groups:client:syncClientData", src, id, src)
+
+    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
+        groupID = id,
+        leader  = src
+    })
     RefreshGroupUI(id)
 end)
 
@@ -262,8 +266,10 @@ RegisterNetEvent('ignis_groups:server:leaveGroup', function()
 
                     TriggerClientEvent('summit_phone:client:updateGroupsApp', src, "setGroups", BuildGroupsArray())
 
-                    TriggerClientEvent("ignis_groups:client:syncClientData", src, id, g.leader)
-
+                    TriggerClientEvent("ignis_groups:client:syncClientData", src, {
+                        groupID = id,
+                        leader  = g.leader
+                    })
                     return
                 end
             end
@@ -475,11 +481,6 @@ RegisterNetEvent('ignis_groups:server:leaveQueue', function()
     end
 end)
 
-
--- ####################################################################
--- # EXPORTS (rep-tablet compatibility)
--- ####################################################################
-
 -- Returns (groupTable, groupId)
 function GetGroupByMembers(src)
     local Player = QBCore.Functions.GetPlayer(src)
@@ -603,7 +604,7 @@ local function GroupEvent(id, event, args)
 
     for _, src in ipairs(members) do
         if type(args) == 'table' then
-            TriggerClientEvent(event, src, table.unpack(args))
+            TriggerClientEvent(event, src, args)
         elseif args ~= nil then
             TriggerClientEvent(event, src, args)
         else
@@ -1029,7 +1030,7 @@ RegisterNetEvent('ignis_groups:server:setJobWaypoint', function(data)
     if jobData then
         local c = jobData.coords
         if jobId == 'oxyrun' or jobId == 'taco' then
-            TriggerClientEvent(src, c)
+            TriggerClientEvent(c, src)
         end
         TriggerClientEvent('ignis_groups:client:setWaypoint', src, { x = c.x, y = c.y, z = c.z }, jobData.label)
     else
