@@ -1,5 +1,4 @@
-QBCore = nil
-function FRAMEWORK()
+function ClientOnLoad()
     if Config.Framework == "qbcore" then
         QBCore = exports['qb-core']:GetCoreObject()
     elseif Config.Framework == "qbox" then
@@ -7,11 +6,11 @@ function FRAMEWORK()
     end
 end
 
-function NOTIFY(title, description, type, timeout)
+function ClientNotify(title, description, type, timeout)
     if Config.Notify == "qbcore" then
-        QBCore.Functions.Notify(description, type)
+        return QBCore.Functions.Notify(description, type)
     elseif Config.Notify == "ox" then
-        lib.notify({
+        return lib.notify({
             title = title,
             description = description,
             type = type

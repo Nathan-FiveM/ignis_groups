@@ -1,3 +1,6 @@
+CreateThread(function()
+    ClientOnLoad()
+end)
 local ActiveBlips = {}
 
 -- === PHONE SYNC EVENTS ===
@@ -91,18 +94,6 @@ RegisterNetEvent('ignis_groups:client:signOff', function()
         timeout = 3000
     })
     LocalPlayer.state:set('nghe', nil, true)
-end)
-
-exports('GetMyGroup', function()
-    lib.callback('ignis_groups:getMyGroup', false, function(data)
-        return data
-    end)
-end)
-
-exports('GetMyGroupLeader', function()
-    lib.callback('ignis_groups:getGroupLeader', false, function(leader)
-        return leader
-    end)
 end)
 
 RegisterCommand('mygroup', function()

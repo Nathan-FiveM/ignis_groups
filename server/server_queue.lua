@@ -1,4 +1,3 @@
-FRAMEWORK()
 _G.JobQueues = _G.JobQueues or {}
 
 local INTERVAL = 30000  -- 30s
@@ -45,7 +44,7 @@ CreateThread(function()
             }
             -- Send job offer ONLY to the leader
             local leaderSrc = group.leader
-            local leaderPly = GETPLAYER(leaderSrc)
+            local leaderPly = ServerGetPlayer(leaderSrc)
 
             if leaderPly then
                 print(('[IGNIS_GROUPS] Sending job offer ONLY to leader %s for group %s'):format(leaderSrc, nextGroupId))
@@ -69,7 +68,7 @@ RegisterNetEvent('ignis_groups:acceptJob', function(notificationId, data)
     print(('[IGNIS_GROUPS] Group %s accepted %s job - triggering event'):format(gid, jobType))
 
     for _, member in ipairs(group.members or {}) do
-        local ply = GETPLAYERBYCID(member.cid)
+        local ply = ServerGetPlayerByCitizenId(member.cid)
         if ply then
             local playerId = member.player or member.playerId or 0
             print(('[IGNIS_GROUPS] Triggering readyforjob for %s (%s)'):format(playerId, member.cid))

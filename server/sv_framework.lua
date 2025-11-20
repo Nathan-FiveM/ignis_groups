@@ -1,17 +1,16 @@
-QBCore = nil
-function FRAMEWORK()
+function ServerOnLoad()
     if Config.Framework == "qbcore" then
-        QBCore = exports['qb-core']:GetCoreObject()
+        return exports['qb-core']:GetCoreObject()
     elseif Config.Framework == "qbox" then
         -- QBCore = exports['qb-core']:GetCoreObject() -- Not required for QBox
     end
 end
 
-function NOTIFY(src, title, description, notifyType, timeout)
+function ServerNotify(src, title, description, notifyType, timeout)
     if Config.Notify == "qbcore" then
-        TriggerClientEvent('QBCore:Notify', src, description, type)
+        return TriggerClientEvent('QBCore:Notify', src, description, type)
     elseif Config.Notify == "ox" then
-        TriggerClientEvent('ox_lib:notify', src, {
+        return TriggerClientEvent('ox_lib:notify', src, {
             id = title,
             title = title,
             description = description,
@@ -20,26 +19,26 @@ function NOTIFY(src, title, description, notifyType, timeout)
     end
 end
 
-function CALLBACK()
+function ServerCallback()
     if Config.Framework == "qbcore" then
-
+        return
     elseif Config.Framework == "qbox" then
-
+        return
     end
 end
 
-function GETPLAYER(src)
+function ServerGetPlayer(src)
     if Config.Framework == "qbcore" then
-        QBCore.Functions.GetPlayer(src)
+        return FW.Functions.GetPlayer(src)
     elseif Config.Framework == "qbox" then
-        exports.qbx_core:GetPlayer(src)
+        return exports.qbx_core:GetPlayer(src)
     end
 end
 
-function GETPLAYERBYCID(cid)
+function ServerGetPlayerByCitizenId(cid)
     if Config.Framework == "qbcore" then
-        QBCore.Functions.GetPlayerByCitizenId(cid)
+        return FW.Functions.GetPlayerByCitizenId(cid)
     elseif Config.Framework == "qbox" then
-        exports.qbx_core:GetPlayerByCitizenId(cid)
+        return exports.qbx_core:GetPlayerByCitizenId(cid)
     end
 end
