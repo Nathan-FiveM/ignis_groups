@@ -887,7 +887,7 @@ local JobCenter = {
         vpn = false,
         label = "Sanitation Worker",
         description = "Clean up the city as part of the Sanitation Department.",
-        coords = vector3(-351.44, -1566.37, 0.0),
+        coords = vector3(-351.44, -1566.37, 24.23),
         JobInformation = "Work with the city sanitation crew. Collect trash bags from assigned streets, throw them into the garbage truck, and empty at the landfill for your pay.",
     },
     ['mining'] = {
@@ -901,7 +901,7 @@ local JobCenter = {
         vpn = false,
         label = "Chicken Farmer",
         description = "Process chickens and collect meat for local restaurants.",
-        coords = vector3(2390.438, 5044.779, 0.0),
+        coords = vector3(-138.396, -248.935, 43.0),
         JobInformation = "Collect live chickens, process them at the farm, and package the meat. Deliver finished goods to designated buyers to earn money.",
     },
     ['fishing'] = {
@@ -915,21 +915,21 @@ local JobCenter = {
         vpn = false,
         label = "Hunting",
         description = "Hunt animals in the wilderness and sell pelts for cash.",
-        coords = vector3(-1616.03, 3727.290, 0.0),
+        coords = vector3(-679.34, 5800.97, 17.33),
         JobInformation = "Travel to the hunting grounds and track animals using your rifle. Skin the animals to collect meat and pelts, then sell them at the butcher for income.",
     },
     ['lumber'] = {
         vpn = false,
         label = "Lumberjack",
         description = "Chop down trees and sell lumber.",
-        coords = vector3(1168.487, -1347.83, 0.0),
+        coords = vector3(1167.73, -1347.27, 33.92),
         JobInformation = "Use your axe to chop down marked trees, process them into logs, and deliver them to the lumber mill for payment.",
     },
     ['panning'] = {
         vpn = false,
         label = "Gold Panning",
         description = "Pan for gold in rivers and streams.",
-        coords = vector3(-1509.00, 1508.842, 0.0),
+        coords = vector3(-1931.76, 1345.193, 214.41),
         JobInformation = "Use your gold pan at shallow water spots to find small nuggets. Collect enough to sell to gold traders for a tidy profit.",
     },
     ['postop'] = {
@@ -952,7 +952,7 @@ local JobCenter = {
         vpn = true,
         label = "Oxy Run",
         description = "Deliver 'packages' around the city for extra cash.",
-        coords = 'rep-oxyrun:client:chiduong2',
+        coords = vector3(115.83, -1089.37, 29.30), -- first dealer spawn as waypoint
         JobInformation = "Meet the supplier to pick up Oxy packages. Deliver them discreetly around the city. Avoid police attention or you’ll lose your payout.",
     },
     ['taco'] = {

@@ -76,23 +76,24 @@ RegisterNetEvent('ignis_groups:client:signIn', function(job)
     local jobType = job or 'generic'
     print(('[ignis_groups] Signed in for job: %s'):format(jobType))
     LocalPlayer.state:set('nghe', jobType, false)
-    exports['summit_phone']:SendCustomAppMessage('sendPhoneNotification', {
+    exports['summit_phone']:SendCustomAppMessage('sendPhoneNotification', json.encode({
         app = 'groups',
         title = '📋 Group System',
         description = ('Signed in for %s'):format(jobType),
         timeout = 3500
-    })
+    }))
     TriggerServerEvent('ignis_groups:server:createGroup', jobType)
 end)
 
-RegisterNetEvent('ignis_groups:client:signOff', function()
+RegisterNetEvent('ignis_groups:client:signOff')
+AddEventHandler('ignis_groups:client:signOff', function()
     print('[ignis_groups] Signed off from job')
-    exports['summit_phone']:SendCustomAppMessage('sendPhoneNotification', {
+    exports['summit_phone']:SendCustomAppMessage('sendPhoneNotification', json.encode({
         app = 'groups',
         title = '📋 Group System',
         description = 'You have signed off from your group job.',
         timeout = 3000
-    })
+    }))
     LocalPlayer.state:set('nghe', nil, true)
 end)
 

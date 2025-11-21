@@ -72,7 +72,6 @@ RegisterNetEvent('ignis_groups:acceptJob', function(notificationId, data)
         if ply then
             local playerId = member.player or member.playerId or 0
             print(('[IGNIS_GROUPS] Triggering readyforjob for %s (%s)'):format(playerId, member.cid))
-            -- TriggerClientEvent('rep-tablet:client:readyforjob', playerId)
             TriggerClientEvent('ignis_groups:client:readyforjob', playerId)
         else
             print(('[IGNIS_GROUPS] Could not find player with CID %s (may be offline)'):format(tostring(member.cid)))
