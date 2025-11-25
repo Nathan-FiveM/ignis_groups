@@ -945,14 +945,14 @@ local JobCenter = {
         vpn = true,
         label = "Chop Shop",
         description = "Steal cars and strip them for valuable parts.",
-        coords = vector3(-214.485, -1366.22, 0.0),
+        coords = 'ignis_chopshop:client:setWaypoint',
         JobInformation = "Locate high-value vehicles on the map, steal them without attracting police attention, and bring them to the chop shop for dismantling and payment.",
     },
     ['oxyrun'] = {
         vpn = true,
         label = "Oxy Run",
         description = "Deliver 'packages' around the city for extra cash.",
-        coords = vector3(115.83, -1089.37, 29.30), -- first dealer spawn as waypoint
+        coords = 'ignis_oxyrun:client:setDealerWaypoint', -- first dealer spawn as waypoint
         JobInformation = "Meet the supplier to pick up Oxy packages. Deliver them discreetly around the city. Avoid police attention or you’ll lose your payout.",
     },
     ['taco'] = {
