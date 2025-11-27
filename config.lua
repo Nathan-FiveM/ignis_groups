@@ -6,6 +6,7 @@ Config.Notify = 'ox' -- ox/qbcore
 Config.DefaultGroupLimit = 4
 
 Config.LocalStates = { -- nghe states for each job type that is currently set up
+    ngheTaxi = "taxi",
     ngheTaco = "taco",
     ngheHouserobbery = "houserobbery",
     ngheSanitation = "sani",
@@ -22,7 +23,9 @@ Config.LocalStates = { -- nghe states for each job type that is currently set up
 }
 
 Config.JobPlayerLimits = { -- Max players per job
+    taxi = 24,
     taco = 6,
+    chopshop = 12,
     houserobbery = 12,
     sani = 16,
     fishing = 16,
@@ -38,8 +41,10 @@ Config.JobPlayerLimits = { -- Max players per job
 }
 
 Config.GroupPlayerLimits = { -- Max amount of player per group
+    taxi = 4,
     taco = 2,
     houserobbery = 2,
+    chopshop = 2,
     sani = 4,
     fishing = 4,
     postop = 4,
@@ -54,9 +59,11 @@ Config.GroupPlayerLimits = { -- Max amount of player per group
 }
 
 Config.JobCooldowns = { -- Cooldowns between finishing a job and getting put back in the queue for a new one
+    taxi = 120, -- 2 mins
     cokeruns = 7200, -- 120 mins
     taco = 1800, -- 30 min
     houserobbery = 900, -- 15 min
+    chopshop = 600, -- 10 mins
     oxyruns = 600, -- 10 mins
     diving = 600, -- 10 mins
 

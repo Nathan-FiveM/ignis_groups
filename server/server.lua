@@ -867,70 +867,134 @@ local JobCenter = {
         label = "Towing",
         description = "Help tow broken down vehicles for the city.",
         coords = vector3(-238.94, -1183.74, 0.0),
-        JobInformation = "Locate broken down or illegally parked vehicles marked on your GPS, use your tow truck to attach and transport them back to the city impound. Make sure to follow traffic laws and return to base for your payment.",
+        JobInformation = [[
+            Talk to the Tow Supervisor and sign in to the towing queue through the phone.
+            When your group gets a job, the leader pays the refundable bail if configured.
+            Pick up the assigned flatbed at the depot and take the keys.
+            Follow the GPS to the target vehicle and load it onto your flatbed (tow interaction).
+            Return to the depot drop zone, unload the vehicle, and park the truck.
+            Collect your paycheck from the supervisor to finish and get your bail back.
+        ]],
     },
     ['taxi'] = {
         vpn = false,
         label = "Taxi",
         description = "Drive passengers to their destinations.",
         coords = vector3(909.51, -177.36, 0.0),
-        JobInformation = "Pick up passengers waiting at taxi stands or who call for rides. Drive them safely to their destination following the GPS route. You’ll earn cash for each successful drop-off.",
+        JobInformation = [[
+            Clock in through the taxi queue (Groups app) and grab a taxi from the depot.
+            Accept a ride offer when it pops; a blip will mark your passenger.
+            Drive to the pickup, start your meter, and collect the passenger.
+            Follow the GPS to the drop-off and drive safely to the destination.
+            End the ride, charge the fare (invoice prompt), and get paid.
+            Stay in queue to receive the next fare or clock out when finished.
+        ]],
     },
     ['storedelivery'] = {
         vpn = false,
         label = "Store Deliveries",
         description = "Deliver goods to local stores.",
         coords = vector3(153.2579, -3210.59, 0.0),
-        JobInformation = "Pick up delivery boxes from the depot. Follow your GPS to each store and drop off the items at their loading zones. Ensure timely delivery for a bonus.",
+        JobInformation = [[
+            Sign in with the trucking foreman and queue through the Groups app.
+            When queued, grab a box truck at the depot; pay the deposit if required.
+            Follow the GPS to each marked store drop-off and unload boxes.
+            Complete all required drops for the run (progress shows in the phone).
+            Return the truck to the depot and park it.
+            Collect your paycheck to finish and get your deposit back.
+        ]],
     },
     ['sani'] = {
         vpn = false,
         label = "Sanitation Worker",
         description = "Clean up the city as part of the Sanitation Department.",
         coords = vector3(-351.44, -1566.37, 24.23),
-        JobInformation = "Work with the city sanitation crew. Collect trash bags from assigned streets, throw them into the garbage truck, and empty at the landfill for your pay.",
+        JobInformation = [[
+            Sign in with the sanitation foreman and queue through the Groups app.
+            When your group is ready, the leader spawns the Trashmaster and shares keys.
+            Drive to Zone 1 and collect trash bags from marked bins/dumpsters; toss them into the truck.
+            After Zone 1 is complete, drive to Zone 2 and repeat the bag collection and loading.
+            Return the Trashmaster to the depot when both zones are done.
+            Have the leader collect the paycheck to finish the run.
+        ]],
     },
     ['mining'] = {
         vpn = false,
         label = "Mining Crew",
         description = "Mine valuable ores deep in the quarry.",
         coords = vector3(-598.545, 2096.533, 0.0),
-        JobInformation = "Head to the quarry and collect rocks from the mining area. Use a pickaxe to extract ore, process it, and deliver it to the smelter for cash rewards.",
+        JobInformation = [[
+            Sign in with the mine foreman and queue via the Groups app.
+            When your group is ready, head to the quarry and start mining stone.
+            Wash the mined stone at the wash station to clean your materials.
+            Sell the washed stone/materials to finish the run.
+            Stages update in the phone as you mine, wash, and sell.
+        ]],
     },
     ['chickens'] = {
         vpn = false,
         label = "Chicken Farmer",
         description = "Process chickens and collect meat for local restaurants.",
         coords = vector3(-138.396, -248.935, 43.0),
-        JobInformation = "Collect live chickens, process them at the farm, and package the meat. Deliver finished goods to designated buyers to earn money.",
+        JobInformation = [[
+            Talk to the farmer NPC and start the chicken job in the phone queue.
+            Accept the job offer in the Groups app when your turn comes up.
+            Follow the farm blip and catch live chickens (E when prompted).
+            Portion the meat at cut tables, then pack at packing tables.
+            Sell the packaged chickens at the marked sell spot to finish and get paid.
+        ]],
     },
     ['fishing'] = {
         vpn = false,
         label = "Fishing",
         description = "Catch fish to sell at the docks or markets.",
         coords = vector3(-335.15, 6105.79, 0.0),
-        JobInformation = "Grab a fishing rod, find a good spot near the water, and start fishing. Sell your catch to the fishmonger for profit — rare fish pay extra.",
+        JobInformation = [[
+            Sign in with the fishing boss and queue through the Groups app.
+            When your group is ready, follow the GPS to the marked fishing spot.
+            Fish at the spot to build up your catch totals.
+            Return to the boss and collect your paycheck for the haul.
+            Sell extra fish at the pier for additional profit.
+        ]],
     },
     ['hunting'] = {
         vpn = false,
         label = "Hunting",
         description = "Hunt animals in the wilderness and sell pelts for cash.",
         coords = vector3(-679.34, 5800.97, 17.33),
-        JobInformation = "Travel to the hunting grounds and track animals using your rifle. Skin the animals to collect meat and pelts, then sell them at the butcher for income.",
+        JobInformation = [[
+            Sign in with the hunting guide and queue through the Groups app.
+            Buy bait/knife from the hunting shop, then head to the marked hunting grounds.
+            Place bait, wait for animals, and take them down safely.
+            Skin the animals for pelts and meat.
+            Sell pelts/meat at the hunting buyer to cash out.
+        ]],
     },
     ['lumber'] = {
         vpn = false,
         label = "Lumberjack",
         description = "Chop down trees and sell lumber.",
         coords = vector3(1167.73, -1347.27, 33.92),
-        JobInformation = "Use your axe to chop down marked trees, process them into logs, and deliver them to the lumber mill for payment.",
+        JobInformation = [[
+            Sign in with the lumber foreman and queue through the Groups app.
+            Grab your axe and chop the marked trees to hit the required log count.
+            Process the chopped logs at the lumber processing station.
+            Sell the processed lumber to the buyer for payout.
+            Sign out/collect any bonus once chop and process goals are met.
+        ]],
     },
     ['panning'] = {
         vpn = false,
         label = "Gold Panning",
         description = "Pan for gold in rivers and streams.",
         coords = vector3(-1931.76, 1345.193, 214.41),
-        JobInformation = "Use your gold pan at shallow water spots to find small nuggets. Collect enough to sell to gold traders for a tidy profit.",
+        JobInformation = [[
+            Sign in with the gold panning boss and queue through the Groups app.
+            Grab your pan and head to the marked river spot when the job is ready.
+            Pan the water to collect paydirt and small nuggets.
+            Wash/refine your paydirt to separate the gold.
+            Sell the refined gold to the buyer for your payout.
+        ]],
     },
     ['postop'] = {
         vpn = false,
@@ -941,33 +1005,70 @@ local JobCenter = {
     },
 
     -- VPN-Required Jobs
+    ['diving'] = {
+        vpn = true,
+        label = "Diving",
+        description = "Recover crates and materials from underwater wrecks.",
+        coords = vector3(-1706.41, -1035.66, 13.02), -- example waypoint: diving shop/boat pickup
+        JobInformation = [[
+            Sign in at the diving spot and queue through the Groups app.
+            Grab your gear/boat and head to the marked dive location.
+            Dive down and collect the crates/loot from the wreck or seabed.
+            Bring the loot back to the surface/boat and return to shore.
+            Sell or hand in the recovered materials to get paid.
+        ]],
+    },
     ['theftcar'] = {
         vpn = true,
         label = "Chop Shop",
         description = "Steal cars and strip them for valuable parts.",
         coords = 'ignis_chopshop:client:setWaypoint',
-        JobInformation = "Locate high-value vehicles on the map, steal them without attracting police attention, and bring them to the chop shop for dismantling and payment.",
+        JobInformation = [[
+            Use a VPN and queue through the Groups app for a chop job.
+            Get the target vehicle location and steal it quietly.
+            Deliver the vehicle to the chop shop waypoint without attracting police.
+            Strip/dismantle the vehicle at the chop shop as instructed.
+            Get paid for the parts once the chop is complete.
+        ]],
     },
     ['oxyrun'] = {
         vpn = true,
         label = "Oxy Run",
         description = "Deliver 'packages' around the city for extra cash.",
         coords = 'ignis_oxyrun:client:setDealerWaypoint', -- first dealer spawn as waypoint
-        JobInformation = "Meet the supplier to pick up Oxy packages. Deliver them discreetly around the city. Avoid police attention or you’ll lose your payout.",
+        JobInformation = [[
+            Use a VPN and queue through the Groups app for an oxy run.
+            Steal a car to use for deliveries (keep it low-key).
+            Meet the supplier in Sandy to pick up your oxy packages.
+            Deliver the required packages to city buyers, then finish the remaining drops in Paleto.
+            Keep heat low; complete all drops to secure full payout.
+        ]],
     },
     ['taco'] = {
         vpn = true,
         label = "Taco Shop",
         description = "Run an underground taco stand.",
         coords = 'rep-weed:client:chiduong',
-        JobInformation = "Collect taco ingredients, cook them at your stand, and serve customers quickly to maximize earnings.",
+        JobInformation = [[
+            Use a VPN and queue through the Groups app for the taco delivery gig.
+            Head to the taco shop to sign in and package the weed tacos.
+            Steal or grab the marked delivery vehicle for your run.
+            Deliver all taco packages to the marked customers around the city.
+            Return to the shop after deliveries to finish and get paid.
+        ]],
     },
     ['houserobbery'] = {
         vpn = true,
         label = "House Robbery",
         description = "Break into homes and grab valuables.",
         coords = vector3(706.8385, -965.994, 0.0),
-        JobInformation = "Scope out houses with little activity, break in quietly, and search for valuables. Watch for alarms or nearby residents. Fence stolen goods for cash.",
+        JobInformation = [[
+            Use a VPN and queue through the Groups app for a house job.
+            Get the target house location and bring lockpicks/tools.
+            Break in quietly, search rooms for valuables, and avoid alarms/residents.
+            Grab loot quickly and leave the area before police respond.
+            Fence the stolen goods to get paid and clear your bag.
+        ]],
     },
 }
 
@@ -1007,6 +1108,25 @@ lib.callback.register('ignis_groups:server:getAvailableJobs', function(source)
     return available
 end)
 
+-- Return job info payload for the phone UI
+lib.callback.register('ignis_groups:server:getJobInfo', function(source, data)
+    local jobId = type(data) == "table" and data.jobId or data
+    if not jobId then return nil end
+
+    local jobData = JobCenter[jobId]
+    if not jobData then return nil end
+
+    local info = jobData.JobInformation or jobData.description or "No information available."
+
+    return {
+        id = jobId,
+        label = jobData.label,
+        description = jobData.description,
+        vpn = jobData.vpn or false,
+        information = info,
+    }
+end)
+
 -- Handle GPS button
 RegisterNetEvent('ignis_groups:server:setJobWaypoint', function(data)
     local src = source
@@ -1015,7 +1135,7 @@ RegisterNetEvent('ignis_groups:server:setJobWaypoint', function(data)
 
     if jobData then
         local c = jobData.coords
-        if jobId == 'oxyrun' or jobId == 'taco' then
+        if jobId == 'oxyrun' or jobId == 'taco' or jobId == 'theftcar' then
             TriggerClientEvent(c, src)
         end
         TriggerClientEvent('ignis_groups:client:setWaypoint', src, { x = c.x, y = c.y, z = c.z }, jobData.label)
